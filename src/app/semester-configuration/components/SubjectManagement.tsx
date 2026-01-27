@@ -34,24 +34,44 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
     if (isHydrated) {
       onSubjectsChange(subjects);
     }
-  }, [subjects, isHydrated, onSubjectsChange]);
+  }, [subjects, isHydrated]);
 
   const handleAddSubject = () => {
+    // Reset previous errors
+    setError('');
+    
+    // Validate required fields
     if (!newSubject.courseCode.trim() || !newSubject.name.trim()) {
       setError('Course code and name are required');
       return;
     }
 
-    if (subjects.some((s) => s.courseCode === newSubject.courseCode)) {
+    // Validate course code format
+    if (!/^[A-Z]{2,4}\d{3,4}$/.test(newSubject.courseCode.trim())) {
+      setError('Invalid course code format. Use format like CS101');
+      return;
+    }
+
+    // Check for duplicate course codes
+    if (subjects.some((s) => s.courseCode === newSubject.courseCode.trim())) {
       setError('Course code already exists');
+      return;
+    }
+
+    // Validate weekly classes
+    if (newSubject.weeklyClasses < 1 || newSubject.weeklyClasses > 10) {
+      setError('Weekly classes must be between 1 and 10');
       return;
     }
 
     const subject: Subject = {
       id: `subject-${Date.now()}`,
-      ...newSubject,
+      courseCode: newSubject.courseCode.trim(),
+      name: newSubject.name.trim(),
+      weeklyClasses: newSubject.weeklyClasses
     };
 
+    console.log('Adding new subject:', subject);
     setSubjects([...subjects, subject]);
     setNewSubject({ courseCode: '', name: '', weeklyClasses: 3 });
     setIsAddingSubject(false);

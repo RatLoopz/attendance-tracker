@@ -21,8 +21,30 @@ const DailyAttendanceContent = () => {
     }
   }, [searchParams]);
 
-  const handleStatusChange = (periodId: string, status: 'attended' | 'missed' | 'cancelled') => {
-    console.log(`Period ${periodId} marked as ${status}`);
+  const handleStatusChange = async (periodId: string, status: 'attended' | 'missed' | 'cancelled') => {
+    try {
+      // This would be replaced with actual implementation using Supabase
+      // The upsert would use a composite key of (user_id, date, subject_id)
+      console.log(`Period ${periodId} marked as ${status}`);
+
+      // Example implementation:
+      // const { error } = await supabase
+      //   .from('attendance_records')
+      //   .upsert({
+      //     user_id: user.id,
+      //     date: selectedDate.toISOString().split('T')[0],
+      //     subject_id: periodId,
+      //     status: status,
+      //     updated_at: new Date().toISOString()
+      //   }, {
+      //     onConflict: 'user_id,date,subject_id'
+      //   });
+      // 
+      // if (error) throw error;
+    } catch (error) {
+      console.error('Error updating attendance:', error);
+      // Add toast notification here
+    }
   };
 
   return (

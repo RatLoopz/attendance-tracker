@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/contexts/AuthContext';
+import { saveSemesterConfiguration, getSemesterConfiguration, SemesterConfig } from '@/lib/semesterConfig';
 import SemesterDateRangeConfig from './SemesterDateRangeConfig';
 import AcademicYearSelector from './AcademicYearSelector';
 import SubjectManagement from './SubjectManagement';
@@ -35,9 +37,12 @@ interface ConfigurationData {
 
 const SemesterConfigurationInteractive = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [saveError, setSaveError] = useState('');
 
   const [configuration, setConfiguration] = useState<ConfigurationData>({
     startDate: '2026-01-15',
@@ -120,34 +125,85 @@ const SemesterConfigurationInteractive = () => {
     setIsHydrated(true);
   }, []);
 
-  const handleDateChange = (startDate: string, endDate: string) => {
+  useEffect(() => {
+    const loadConfiguration = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await getSemesterConfiguration(user.id);
+        
+        if (data && !error) {
+          setConfiguration({
+            startDate: data.startDate,
+            endDate: data.endDate,
+            academicYear: data.academicYear,
+            semesterType: data.semesterType,
+            subjects: data.subjects,
+            schedule: data.schedule
+          });
+        }
+      } catch (err) {
+        console.error('Error loading configuration:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (user) {
+      loadConfiguration();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const handleDateChange = useCallback((startDate: string, endDate: string) => {
     setConfiguration((prev) => ({ ...prev, startDate, endDate }));
-  };
+  }, []);
 
-  const handleYearChange = (academicYear: string, semesterType: string) => {
+  const handleYearChange = useCallback((academicYear: string, semesterType: string) => {
     setConfiguration((prev) => ({ ...prev, academicYear, semesterType }));
-  };
+  }, []);
 
-  const handleSubjectsChange = (subjects: Subject[]) => {
+  const handleSubjectsChange = useCallback((subjects: Subject[]) => {
     setConfiguration((prev) => ({ ...prev, subjects }));
-  };
+  }, []);
 
-  const handleScheduleChange = (schedule: SchedulePeriod[]) => {
+  const handleScheduleChange = useCallback((schedule: SchedulePeriod[]) => {
     setConfiguration((prev) => ({ ...prev, schedule }));
-  };
+  }, []);
 
   const handleSaveConfiguration = async () => {
+    if (!user) return;
+    
     setIsSaving(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setIsSaving(false);
-    setShowSuccessMessage(true);
-
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-      router.push('/calendar-dashboard');
-    }, 2000);
+    
+    try {
+      const { error } = await saveSemesterConfiguration({
+        userId: user.id,
+        startDate: configuration.startDate,
+        endDate: configuration.endDate,
+        academicYear: configuration.academicYear,
+        semesterType: configuration.semesterType as 'odd' | 'even',
+        subjects: configuration.subjects,
+        schedule: configuration.schedule
+      });
+      
+      if (error) {
+        console.error('Error saving configuration:', error);
+        alert('Failed to save configuration. Please try again.');
+      } else {
+        setShowSuccessMessage(true);
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+          router.push('/calendar-dashboard');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const isConfigurationComplete = () => {
@@ -206,6 +262,12 @@ const SemesterConfigurationInteractive = () => {
       />
 
       <div className="sticky bottom-4 bg-card rounded-lg p-4 shadow-elevation-4 border border-border">
+        {saveError && (
+          <div className="mb-4 flex items-start gap-2 p-3 bg-error/10 border border-error/20 rounded-lg">
+            <Icon name="ExclamationCircleIcon" size={20} className="text-error flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-error">{saveError}</p>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Icon

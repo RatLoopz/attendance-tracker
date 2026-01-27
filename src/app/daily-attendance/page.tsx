@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import DailyAttendanceInteractive from './components/DailyAttendanceInteractive';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export const metadata: Metadata = {
   title: 'Daily Attendance - AttendanceTracker',
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function DailyAttendancePage() {
-  return <DailyAttendanceInteractive />;
+  return (
+    <ProtectedRoute>
+      <DailyAttendanceInteractive />
+    </ProtectedRoute>
+  );
 }

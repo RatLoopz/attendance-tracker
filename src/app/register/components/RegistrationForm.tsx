@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FormData {
   fullName: string;
@@ -35,6 +36,7 @@ interface PasswordStrength {
 
 const RegistrationForm = () => {
   const router = useRouter();
+  const { signUp } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -168,13 +170,33 @@ const RegistrationForm = () => {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      // Register the user with Supabase
+      const profileData = {
+        name: formData.fullName,
+        collegeName: formData.collegeName,
+        semester: formData.semester,
+        degreeProgram: formData.degreeProgram,
+        graduationYear: formData.graduationYear
+      };
+      
+      const result = await signUp(formData.email, formData.password, profileData);
+      const { error } = result;
+      
+      if (error) {
+        alert(`Registration failed: ${error.message}`);
+      } else if (result.needsConfirmation) {
+        alert(result.message || 'Registration successful! Please check your email to confirm your account.');
+        router.push('/login');
+      } else {
+        alert('Registration successful! Welcome to AttendanceTracker. Redirecting to semester configuration...');
+        router.push('/semester-configuration');
+      }
+    } catch (err) {
+      alert('An unexpected error occurred during registration. Please try again.');
+    } finally {
       setIsLoading(false);
-      alert(
-        'Registration successful! Welcome to AttendanceTracker. Redirecting to semester configuration...'
-      );
-      router.push('/semester-configuration');
-    }, 2000);
+    }
   };
 
   const semesterOptions = [

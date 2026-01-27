@@ -1,0 +1,53 @@
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.connected {
+  color: #16a34a;
+  background-color: rgba(22, 163, 74, 0.1);
+}
+
+.connected .dot {
+  background-color: #16a34a;
+}
+
+.offline {
+  color: #dc2626;
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+.offline .dot {
+  background-color: #dc2626;
+}
+
+.loading {
+  color: #6b7280;
+  background-color: rgba(107, 114, 128, 0.1);
+}
+
+.loading .dot {
+  background-color: #6b7280;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
   className?: string;
@@ -11,13 +12,16 @@ interface HeaderProps {
 
 interface NavigationItem {
   label: string;
-  path: string;
+  path?: string;
+  action?: string;
   icon: string;
-  tooltip: string;
+  tooltip?: string;
 }
 
 const Header = ({ className = '' }: HeaderProps) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<'safe' | 'warning' | 'danger'>('safe');
   const [currentDate, setCurrentDate] = useState('');
@@ -51,7 +55,7 @@ const Header = ({ className = '' }: HeaderProps) => {
     },
     {
       label: 'Logout',
-      path: '/login',
+      action: 'logout',
       icon: 'ArrowRightOnRectangleIcon',
     },
   ];
@@ -115,12 +119,12 @@ const Header = ({ className = '' }: HeaderProps) => {
           <nav className="hidden md:flex items-center gap-2">
             {navigationItems.map((item) => (
               <Link
-                key={item.path}
-                href={item.path}
+                key={item.path || item.label}
+                href={item.path || '#'}
                 className={`
                   flex items-center gap-2 px-4 py-2 rounded-lg transition-smooth
                   ${
-                    isActive(item.path)
+                    item.path && isActive(item.path)
                       ? 'bg-primary text-primary-foreground font-medium'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }
@@ -130,7 +134,7 @@ const Header = ({ className = '' }: HeaderProps) => {
                 <Icon
                   name={item.icon as any}
                   size={20}
-                  variant={isActive(item.path) ? 'solid' : 'outline'}
+                  variant={item.path && isActive(item.path) ? 'solid' : 'outline'}
                 />
                 <span className="text-sm">{item.label}</span>
               </Link>
@@ -158,21 +162,44 @@ const Header = ({ className = '' }: HeaderProps) => {
 
             {isSettingsOpen && (
               <div className="absolute right-0 top-full mt-2 w-64 bg-popover rounded-lg shadow-elevation-4 overflow-hidden animate-slide-down">
-                {settingsItems.map((item, index) => (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    onClick={() => setIsSettingsOpen(false)}
-                    className={`
-                      flex items-center gap-3 px-4 py-3 transition-smooth
-                      hover:bg-muted text-popover-foreground
-                      ${index !== settingsItems.length - 1 ? 'border-b border-border' : ''}
-                    `}
-                  >
-                    <Icon name={item.icon as any} size={20} />
-                    <span className="text-sm">{item.label}</span>
-                  </Link>
-                ))}
+                {settingsItems.map((item, index) => {
+                  if (item.action === 'logout') {
+                    return (
+                      <button
+                        key="logout"
+                        onClick={async () => {
+                          setIsSettingsOpen(false);
+                          await signOut();
+                          router.push('/login');
+                        }}
+                        className={`
+                          flex items-center gap-3 px-4 py-3 transition-smooth w-full text-left
+                          hover:bg-muted text-popover-foreground
+                          ${index !== settingsItems.length - 1 ? 'border-b border-border' : ''}
+                        `}
+                      >
+                        <Icon name={item.icon as any} size={20} />
+                        <span className="text-sm">{item.label}</span>
+                      </button>
+                    );
+                  }
+                  
+                  return (
+                    <Link
+                      key={item.path || item.label}
+                      href={item.path || '#'}
+                      onClick={() => setIsSettingsOpen(false)}
+                      className={`
+                        flex items-center gap-3 px-4 py-3 transition-smooth
+                        hover:bg-muted text-popover-foreground
+                        ${index !== settingsItems.length - 1 ? 'border-b border-border' : ''}
+                      `}
+                    >
+                      <Icon name={item.icon as any} size={20} />
+                      <span className="text-sm">{item.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -183,17 +210,17 @@ const Header = ({ className = '' }: HeaderProps) => {
         <div className="flex items-center justify-around h-16 px-2">
           {navigationItems.map((item) => (
             <Link
-              key={item.path}
-              href={item.path}
+              key={item.path || item.label}
+              href={item.path || '#'}
               className={`
                 flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-smooth min-w-[64px]
-                ${isActive(item.path) ? 'text-primary' : 'text-muted-foreground'}
+                ${item.path && isActive(item.path) ? 'text-primary' : 'text-muted-foreground'}
               `}
             >
               <Icon
                 name={item.icon as any}
                 size={24}
-                variant={isActive(item.path) ? 'solid' : 'outline'}
+                variant={item.path && isActive(item.path) ? 'solid' : 'outline'}
               />
               <span className="text-xs font-medium">{item.label}</span>
             </Link>

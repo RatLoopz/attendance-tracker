@@ -7,6 +7,8 @@ import SubjectCard from './SubjectCard';
 import AttendanceTrendChart from './AttendanceTrendChart';
 import ExportButton from './ExportButton';
 import Icon from '@/components/ui/AppIcon';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Subject {
   id: string;
@@ -36,6 +38,9 @@ interface FilterState {
 const SemesterStatisticsInteractive = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const mockSubjects: Subject[] = [
     {
@@ -119,18 +124,173 @@ const SemesterStatisticsInteractive = () => {
 
   useEffect(() => {
     setIsHydrated(true);
-    setFilteredSubjects(mockSubjects);
   }, []);
 
+  useEffect(() => {
+    if (!isHydrated || !user) return;
+
+    const fetchStatistics = async () => {
+      try {
+        setLoading(true);
+
+        // Get the current semester dates
+        const { data: semesterData, error: semesterError } = await supabase
+          .from('semesters')
+          .select('*')
+          .eq('is_current', true)
+          .single();
+
+        if (semesterError) throw semesterError;
+
+        // Fetch attendance data for the current user in the current semester
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from('attendance_records')
+          .select(`
+            status,
+            date,
+            subjects (
+              id,
+              name,
+              code
+            )
+          `)
+          .eq('user_id', user.id)
+          .gte('date', semesterData.start_date)
+          .lte('date', semesterData.end_date);
+
+        if (attendanceError) throw attendanceError;
+
+        // Fetch all scheduled classes for the current semester
+        const { data: scheduleData, error: scheduleError } = await supabase
+          .from('class_schedule')
+          .select(`
+            subject_id,
+            subjects (
+              id,
+              name,
+              code
+            )
+          `)
+          .gte('date', semesterData.start_date)
+          .lte('date', semesterData.end_date);
+
+        if (scheduleError) throw scheduleError;
+
+        // Process the data to calculate statistics
+        const subjectStats = new Map();
+
+        // Initialize subjects from schedule
+        scheduleData?.forEach(item => {
+          if (!subjectStats.has(item.subject_id)) {
+            // Check if subjects data exists and is an array
+            const subjectInfo = Array.isArray(item.subjects) ? item.subjects[0] : item.subjects;
+            subjectStats.set(item.subject_id, {
+              id: item.subject_id,
+              name: subjectInfo?.name || 'Unknown Subject',
+              code: subjectInfo?.code || 'UNKNOWN',
+              totalClasses: 0,
+              attendedClasses: 0,
+              missedClasses: 0,
+              cancelledClasses: 0,
+            });
+          }
+          subjectStats.get(item.subject_id).totalClasses++;
+        });
+
+        // Update with attendance data
+        attendanceData?.forEach(record => {
+          // Check if subjects data exists and is an array
+          const subjectInfo = Array.isArray(record.subjects) ? record.subjects[0] : record.subjects;
+          if (subjectInfo && subjectInfo.id) {
+            const subject = subjectStats.get(subjectInfo.id);
+            if (subject) {
+              if (record.status === 'attended') {
+                subject.attendedClasses++;
+              } else if (record.status === 'missed') {
+                subject.missedClasses++;
+              } else if (record.status === 'cancelled') {
+                subject.cancelledClasses++;
+              }
+            }
+          }
+        });
+
+        // Convert to array and calculate percentages
+        const subjects: Subject[] = Array.from(subjectStats.values()).map(subject => {
+          const validClasses = subject.totalClasses - subject.cancelledClasses;
+          const percentage = validClasses > 0 ? (subject.attendedClasses / validClasses) * 100 : 0;
+          const requiredClasses = percentage < 75 ? Math.ceil((0.75 * validClasses) - subject.attendedClasses) : undefined;
+
+          return {
+            ...subject,
+            percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal place
+            requiredClasses
+          };
+        });
+
+        // Generate trend data (weekly)
+        const weeklyStats = new Map();
+
+        // Get week number from date
+        const getWeekNumber = (dateStr: string) => {
+          const date = new Date(dateStr);
+          const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+          const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+          return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        };
+
+        // Process attendance data by week
+        attendanceData?.forEach(record => {
+          const weekNum = getWeekNumber(record.date);
+
+          if (!weeklyStats.has(weekNum)) {
+            weeklyStats.set(weekNum, {
+              week: `Week ${weekNum}`,
+              attended: 0,
+              total: 0
+            });
+          }
+
+          const week = weeklyStats.get(weekNum);
+          week.total++;
+          if (record.status === 'attended') {
+            week.attended++;
+          }
+        });
+
+        // Convert to array and calculate percentages
+        const trends: TrendDataPoint[] = Array.from(weeklyStats.values())
+          .sort((a, b) => parseInt(a.week.split(' ')[1]) - parseInt(b.week.split(' ')[1]))
+          .map(week => ({
+            ...week,
+            percentage: week.total > 0 ? Math.round((week.attended / week.total) * 100 * 10) / 10 : 0
+          }));
+
+        setFilteredSubjects(subjects);
+        setTrendData(trends);
+      } catch (error) {
+        console.error('Error fetching statistics:', error);
+        // Fallback to mock data if there's an error
+        setFilteredSubjects(mockSubjects);
+        setTrendData(mockTrendData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStatistics();
+  }, [isHydrated, user]);
+
   const calculateOverallStats = () => {
-    const totalClasses = mockSubjects.reduce((sum, s) => sum + s.totalClasses, 0);
-    const totalAttended = mockSubjects.reduce((sum, s) => sum + s.attendedClasses, 0);
-    const overallPercentage = (totalAttended / totalClasses) * 100;
-    const safeSubjects = mockSubjects.filter((s) => s.percentage >= 75).length;
-    const dangerSubjects = mockSubjects.filter((s) => s.percentage < 70).length;
+    const subjects = filteredSubjects.length > 0 ? filteredSubjects : mockSubjects;
+    const totalClasses = subjects.reduce((sum, s) => sum + s.totalClasses, 0);
+    const totalAttended = subjects.reduce((sum, s) => sum + s.attendedClasses, 0);
+    const overallPercentage = totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0;
+    const safeSubjects = subjects.filter((s) => s.percentage >= 75).length;
+    const dangerSubjects = subjects.filter((s) => s.percentage < 70).length;
 
     return {
-      totalSubjects: mockSubjects.length,
+      totalSubjects: subjects.length,
       overallPercentage,
       safeSubjects,
       dangerSubjects,
@@ -188,7 +348,7 @@ const SemesterStatisticsInteractive = () => {
     alert('Report exported successfully! Check console for data.');
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || loading) {
     return (
       <div className="min-h-screen bg-background pt-[60px] pb-20 lg:pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

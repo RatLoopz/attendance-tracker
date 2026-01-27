@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchAttendanceForMonth, getAttendanceStatusByDate } from '@/lib/attendanceService';
+import { DatabaseSetupNotification } from '@/components/ui/DatabaseSetupNotification';
 
 
 interface AttendanceStatus {
@@ -29,8 +32,10 @@ interface MonthCalendarProps {
 
 const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = '' }: MonthCalendarProps) => {
   const router = useRouter();
+  const { user } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
   const [calendarDays, setCalendarDays] = useState<DayData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -44,73 +49,101 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    // Ensure component is hydrated and user is authenticated
+    if (!isHydrated || !user || !user.id) {
+      console.warn('Cannot fetch attendance: Component not hydrated or user not authenticated');
+      setLoading(false);
+      return;
+    }
+    
+    const fetchAttendanceData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get all dates in the month
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        
+        const monthDates: string[] = [];
+        for (let date = 1; date <= daysInMonth; date++) {
+          const currentDate = new Date(year, month, date);
+          currentDate.setHours(0, 0, 0, 0);
+          const fullDate = currentDate.toISOString().split('T')[0];
+          monthDates.push(fullDate);
+        }
+        
+        // Fetch attendance data for the month
+        let attendanceData: Record<string, any> = {};
 
-    const mockAttendanceData: Record<string, AttendanceStatus> = {
-      '2026-01-05': { attended: 4, missed: 1, cancelled: 0 },
-      '2026-01-06': { attended: 5, missed: 0, cancelled: 0 },
-      '2026-01-07': { attended: 3, missed: 2, cancelled: 0 },
-      '2026-01-08': { attended: 4, missed: 0, cancelled: 1 },
-      '2026-01-09': { attended: 5, missed: 0, cancelled: 0 },
-      '2026-01-10': { attended: 2, missed: 1, cancelled: 0 },
+        try {
+          attendanceData = await getAttendanceStatusByDate(user.id, monthDates);
+        } catch (attendanceError) {
+          console.error('Error fetching attendance data:', attendanceError);
+          // Continue with empty attendance data
+          attendanceData = {};
+        }
+
+        const startingDayOfWeek = firstDay.getDay();
+        // daysInMonth is already declared above
+
+        const semesterStartDate = new Date(semesterStart);
+        const semesterEndDate = new Date(semesterEnd);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const days: DayData[] = [];
+
+        for (let i = 0; i < startingDayOfWeek; i++) {
+          const prevMonthLastDay = new Date(year, month, 0).getDate();
+          let date = prevMonthLastDay - startingDayOfWeek + i + 1;
+          const fullDate = new Date(year, month - 1, date).toISOString().split('T')[0];
+          days.push({
+            date,
+            fullDate,
+            isCurrentMonth: false,
+            isSemesterDay: false,
+            isToday: false,
+          });
+        }
+
+        for (let date = 1; date <= daysInMonth; date++) {
+          const currentDate = new Date(year, month, date);
+          currentDate.setHours(0, 0, 0, 0);
+          const fullDate = currentDate.toISOString().split('T')[0];
+          const isSemesterDay = currentDate >= semesterStartDate && currentDate <= semesterEndDate;
+          const isToday = currentDate.getTime() === today.getTime();
+
+          days.push({
+            date,
+            fullDate,
+            isCurrentMonth: true,
+            isSemesterDay,
+            isToday,
+            attendanceStatus: attendanceData[fullDate],
+          });
+        }
+
+        const remainingDays = 42 - days.length;
+        for (let date = 1; date <= remainingDays; date++) {
+          const fullDate = new Date(year, month + 1, date).toISOString().split('T')[0];
+          days.push({
+            date,
+            fullDate,
+            isCurrentMonth: false,
+            isSemesterDay: false,
+            isToday: false,
+          });
+        }
+
+        setCalendarDays(days);
+      } finally {
+        setLoading(false);
+      }
     };
-
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startingDayOfWeek = firstDay.getDay();
-    const daysInMonth = lastDay.getDate();
-
-    const semesterStartDate = new Date(semesterStart);
-    const semesterEndDate = new Date(semesterEnd);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const days: DayData[] = [];
-
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      const prevMonthLastDay = new Date(year, month, 0).getDate();
-      let date = prevMonthLastDay - startingDayOfWeek + i + 1;
-      const fullDate = new Date(year, month - 1, date).toISOString().split('T')[0];
-      days.push({
-        date,
-        fullDate,
-        isCurrentMonth: false,
-        isSemesterDay: false,
-        isToday: false,
-      });
-    }
-
-    for (let date = 1; date <= daysInMonth; date++) {
-      const currentDate = new Date(year, month, date);
-      currentDate.setHours(0, 0, 0, 0);
-      const fullDate = currentDate.toISOString().split('T')[0];
-      const isSemesterDay = currentDate >= semesterStartDate && currentDate <= semesterEndDate;
-      const isToday = currentDate.getTime() === today.getTime();
-
-      days.push({
-        date,
-        fullDate,
-        isCurrentMonth: true,
-        isSemesterDay,
-        isToday,
-        attendanceStatus: mockAttendanceData[fullDate],
-      });
-    }
-
-    const remainingDays = 42 - days.length;
-    for (let date = 1; date <= remainingDays; date++) {
-      const fullDate = new Date(year, month + 1, date).toISOString().split('T')[0];
-      days.push({
-        date,
-        fullDate,
-        isCurrentMonth: false,
-        isSemesterDay: false,
-        isToday: false,
-      });
-    }
-
-    setCalendarDays(days);
-  }, [year, month, semesterStart, semesterEnd, isHydrated]);
+    
+    fetchAttendanceData();
+  }, [year, month, semesterStart, semesterEnd, isHydrated, user]);
 
   const handleDateClick = (day: DayData) => {
     if (!isHydrated || !day.isCurrentMonth) return;
@@ -134,7 +167,7 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
     }
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || loading) {
     return (
       <div className={`bg-card rounded-lg shadow-elevation-2 p-6 ${className}`}>
         <div className="mb-6">

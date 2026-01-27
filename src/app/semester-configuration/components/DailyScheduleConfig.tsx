@@ -15,6 +15,7 @@ interface SchedulePeriod {
   endTime: string;
   subjectId: string;
   classroom: string;
+  dayOfWeek?: string; // Optional day of the week for specific day scheduling
 }
 
 interface DailyScheduleConfigProps {
@@ -32,6 +33,16 @@ const DailyScheduleConfig = ({
   const [schedule, setSchedule] = useState<SchedulePeriod[]>(initialSchedule);
   const [error, setError] = useState('');
 
+  const daysOfWeek = [
+    { value: 'monday', label: 'Monday' },
+    { value: 'tuesday', label: 'Tuesday' },
+    { value: 'wednesday', label: 'Wednesday' },
+    { value: 'thursday', label: 'Thursday' },
+    { value: 'friday', label: 'Friday' },
+    { value: 'saturday', label: 'Saturday' },
+    { value: 'sunday', label: 'Sunday' },
+  ];
+  
   const defaultPeriods = [
     { periodNumber: 1, startTime: '09:00', endTime: '10:00' },
     { periodNumber: 2, startTime: '10:00', endTime: '11:00' },
@@ -135,7 +146,7 @@ const DailyScheduleConfig = ({
             {schedule.map((period) => (
               <div
                 key={period.periodNumber}
-                className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-background rounded-lg border border-border"
+                className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-background rounded-lg border border-border"
               >
                 <div>
                   <p className="caption text-muted-foreground mb-2">Period {period.periodNumber}</p>
@@ -145,6 +156,23 @@ const DailyScheduleConfig = ({
                       {period.startTime} - {period.endTime}
                     </span>
                   </div>
+                </div>
+
+                <div>
+                  <label className="caption text-muted-foreground mb-2 block">Day</label>
+                  <select
+                    value={period.dayOfWeek || 'monday'}
+                    onChange={(e) =>
+                      handlePeriodChange(period.periodNumber, 'dayOfWeek', e.target.value)
+                    }
+                    className="w-full px-3 py-2 bg-card border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                  >
+                    {daysOfWeek.map((day) => (
+                      <option key={day.value} value={day.value}>
+                        {day.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="md:col-span-2">

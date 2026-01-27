@@ -3,6 +3,7 @@ import Header from '@/components/common/Header';
 import DateContextIndicator from '@/components/common/DateContextIndicator';
 import QuickStatusIndicator from '@/components/common/QuickStatusIndicator';
 import CalendarDashboardInteractive from './components/CalendarDashboardInteractive';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export const metadata: Metadata = {
   title: 'Calendar Dashboard - AttendanceTracker',
@@ -11,14 +12,18 @@ export const metadata: Metadata = {
 
 export default function CalendarDashboardPage() {
   return (
-    <>
-      <Header className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <DateContextIndicator />
-        </div>
-        <QuickStatusIndicator />
-      </Header>
-      <CalendarDashboardInteractive />
-    </>
+    <ProtectedRoute>
+      <>
+        <Header>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-4">
+              <DateContextIndicator />
+            </div>
+            <QuickStatusIndicator />
+          </div>
+        </Header>
+        <CalendarDashboardInteractive />
+      </>
+    </ProtectedRoute>
   );
 }

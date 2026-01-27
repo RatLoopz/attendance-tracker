@@ -3,6 +3,7 @@ import Header from '@/components/common/Header';
 import DateContextIndicator from '@/components/common/DateContextIndicator';
 import QuickStatusIndicator from '@/components/common/QuickStatusIndicator';
 import SemesterStatisticsInteractive from './components/SemesterStatisticsInteractive';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export const metadata: Metadata = {
   title: 'Semester Statistics - AttendanceTracker',
@@ -12,14 +13,18 @@ export const metadata: Metadata = {
 
 export default function SemesterStatisticsPage() {
   return (
-    <>
-      <Header className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <DateContextIndicator />
-          <QuickStatusIndicator />
-        </div>
-      </Header>
-      <SemesterStatisticsInteractive />
-    </>
+    <ProtectedRoute>
+      <>
+        <Header>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-4">
+              <DateContextIndicator />
+              <QuickStatusIndicator />
+            </div>
+          </div>
+        </Header>
+        <SemesterStatisticsInteractive />
+      </>
+    </ProtectedRoute>
   );
 }

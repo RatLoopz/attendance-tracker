@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginFormProps {
   className?: string;
@@ -23,6 +24,7 @@ interface FormErrors {
 
 const LoginForm = ({ className = '' }: LoginFormProps) => {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -52,10 +54,7 @@ const LoginForm = ({ className = '' }: LoginFormProps) => {
     );
   }
 
-  const mockCredentials = {
-    email: 'student@btech.edu',
-    password: 'Attend@2026',
-  };
+
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,19 +98,23 @@ const LoginForm = ({ className = '' }: LoginFormProps) => {
     setIsLoading(true);
     setErrors({});
 
-    setTimeout(() => {
-      if (
-        formData.email === mockCredentials.email &&
-        formData.password === mockCredentials.password
-      ) {
-        router.push('/calendar-dashboard');
-      } else {
+    try {
+      const { error } = await signIn(formData.email, formData.password);
+      
+      if (error) {
         setErrors({
-          general: 'Invalid email or password. Please check your credentials and try again.',
+          general: error.message || 'Invalid email or password. Please check your credentials and try again.',
         });
-        setIsLoading(false);
+      } else {
+        router.push('/calendar-dashboard');
       }
-    }, 1500);
+    } catch (err) {
+      setErrors({
+        general: 'An unexpected error occurred. Please try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
