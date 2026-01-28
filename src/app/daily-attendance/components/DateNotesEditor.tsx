@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/contexts/AuthContext';
+import { getDailyNotes, saveDailyNote, deleteDailyNote } from '@/lib/dailyNotesService';
 
 interface Note {
   id: string;
@@ -15,39 +17,61 @@ interface DateNotesEditorProps {
 }
 
 const DateNotesEditor = ({ selectedDate }: DateNotesEditorProps) => {
+  const { user } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isUnderline, setIsUnderline] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    const fetchNotes = async () => {
+      if (!isHydrated || !user) {
+        setIsLoading(false);
+        return;
+      }
 
-    const mockNotes: Note[] = [
-      {
-        id: 'note1',
-        content:
-          'Assignment due: Complete Data Structures Lab 5 by Friday\n\nTopics covered today:\n• Binary Search Trees\n• AVL Trees\n• Tree Traversal Algorithms\n\nImportant: Midterm exam scheduled for next week - focus on chapters 1-5',
-        createdAt: '2026-01-10T09:30:00',
-        updatedAt: '2026-01-10T14:45:00',
-      },
-    ];
+      try {
+        setIsLoading(true);
+        const dateString = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
-    setNotes(mockNotes);
-  }, [isHydrated, selectedDate]);
+        const { data, error } = await getDailyNotes(user.id, dateString);
 
-  if (!isHydrated) {
+        if (error) {
+          console.error('Error fetching notes:', error);
+          setNotes([]);
+        } else {
+          setNotes(data || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching notes:', err);
+        setNotes([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNotes();
+  }, [isHydrated, selectedDate, user]);
+
+  if (!isHydrated || isLoading) {
     return (
       <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
         <div className="h-64 bg-muted rounded" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="bg-card rounded-lg p-4 shadow-elevation-2">
+        <p className="text-muted-foreground text-center">Please log in to view notes</p>
       </div>
     );
   }
@@ -64,35 +88,60 @@ const DateNotesEditor = ({ selectedDate }: DateNotesEditorProps) => {
     setNoteContent(note.content);
   };
 
-  const handleSaveNote = () => {
-    if (!noteContent.trim()) return;
+  const handleSaveNote = async () => {
+    if (!noteContent.trim() || !user) return;
 
-    if (editingNoteId) {
-      setNotes((prev) =>
-        prev.map((note) =>
-          note.id === editingNoteId
-            ? { ...note, content: noteContent, updatedAt: new Date().toISOString() }
-            : note
-        )
+    try {
+      setIsSaving(true);
+      const dateString = selectedDate.toISOString().split('T')[0];
+
+      const { data, error } = await saveDailyNote(
+        user.id,
+        dateString,
+        noteContent.trim(),
+        editingNoteId || undefined
       );
-    } else {
-      const newNote: Note = {
-        id: `note${Date.now()}`,
-        content: noteContent,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setNotes((prev) => [...prev, newNote]);
-    }
 
-    setIsEditing(false);
-    setEditingNoteId(null);
-    setNoteContent('');
+      if (error) {
+        console.error('Error saving note:', error);
+        alert('Failed to save note. Please try again.');
+        return;
+      }
+
+      // Refresh notes after save
+      const { data: updatedNotes, error: fetchError } = await getDailyNotes(user.id, dateString);
+      if (!fetchError && updatedNotes) {
+        setNotes(updatedNotes);
+      }
+
+      setIsEditing(false);
+      setEditingNoteId(null);
+      setNoteContent('');
+    } catch (err) {
+      console.error('Unexpected error saving note:', err);
+      alert('Failed to save note. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteNote = (noteId: string) => {
-    if (confirm('Are you sure you want to delete this note?')) {
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('Are you sure you want to delete this note?') || !user) return;
+
+    try {
+      const { error } = await deleteDailyNote(user.id, noteId);
+
+      if (error) {
+        console.error('Error deleting note:', error);
+        alert('Failed to delete note. Please try again.');
+        return;
+      }
+
+      // Remove note from state
       setNotes((prev) => prev.filter((note) => note.id !== noteId));
+    } catch (err) {
+      console.error('Unexpected error deleting note:', err);
+      alert('Failed to delete note. Please try again.');
     }
   };
 
@@ -154,14 +203,14 @@ const DateNotesEditor = ({ selectedDate }: DateNotesEditorProps) => {
           <div className="flex items-center gap-2 p-2 bg-muted rounded-lg flex-wrap">
             <button
               onClick={() => insertFormatting('**', '**')}
-              className={`p-2 rounded transition-smooth ${isBold ? 'bg-primary text-primary-foreground' : 'hover:bg-background'}`}
+              className="p-2 rounded transition-smooth hover:bg-background"
               title="Bold"
             >
               <Icon name="BoldIcon" size={18} />
             </button>
             <button
               onClick={() => insertFormatting('*', '*')}
-              className={`p-2 rounded transition-smooth ${isItalic ? 'bg-primary text-primary-foreground' : 'hover:bg-background'}`}
+              className="p-2 rounded transition-smooth hover:bg-background"
               title="Italic"
             >
               <Icon name="ItalicIcon" size={18} />
@@ -193,14 +242,16 @@ const DateNotesEditor = ({ selectedDate }: DateNotesEditorProps) => {
           <div className="flex gap-2">
             <button
               onClick={handleSaveNote}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-smooth hover:opacity-90"
+              disabled={isSaving || !noteContent.trim()}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-smooth hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icon name="CheckIcon" size={18} />
-              <span className="text-sm font-medium">Save Note</span>
+              <span className="text-sm font-medium">{isSaving ? 'Saving...' : 'Save Note'}</span>
             </button>
             <button
               onClick={handleCancel}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg transition-smooth hover:bg-muted/80"
+              disabled={isSaving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg transition-smooth hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icon name="XMarkIcon" size={18} />
               <span className="text-sm font-medium">Cancel</span>

@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
-interface ClassPeriod {
+export interface ClassPeriod {
   id: string;
   periodNumber: number;
   startTime: string;
@@ -19,130 +19,24 @@ interface ClassPeriod {
 
 interface DailyScheduleTimelineProps {
   selectedDate: Date;
+  periods: ClassPeriod[];
   onStatusChange: (periodId: string, status: 'attended' | 'missed' | 'cancelled') => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
-const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTimelineProps) => {
+const DailyScheduleTimeline = ({
+  selectedDate,
+  periods,
+  onStatusChange,
+  loading = false,
+  error = null,
+}: DailyScheduleTimelineProps) => {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [periods, setPeriods] = useState<ClassPeriod[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
-  const dateStr = selectedDate.toISOString().split('T')[0];
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (!isHydrated || !user) return;
-
-    const fetchScheduleAndAttendance = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Import needed services
-        const { getSemesterConfiguration } = await import('@/lib/semesterConfig');
-        const { generateDailySchedule, enrichScheduleWithSubjectDetails, getDayOfWeek, isWeekend } =
-          await import('@/lib/scheduleGenerator');
-
-        // Check if it's a weekend
-        if (isWeekend(selectedDate)) {
-          console.log('Selected date is a weekend, no classes scheduled');
-          setPeriods([]);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch semester configuration for the user
-        const { data: semesterConfig, error: configError } = await getSemesterConfiguration(
-          user.id
-        );
-
-        if (configError) {
-          console.error('Configuration fetch error:', configError);
-          throw new Error(`Failed to fetch semester configuration: ${configError.message}`);
-        }
-
-        if (!semesterConfig) {
-          console.log('No semester configuration found for user');
-          setError('Please configure your semester first by going to Semester Configuration');
-          setPeriods([]);
-          setLoading(false);
-          return;
-        }
-
-        // Generate daily schedule for the selected date
-        const dayOfWeek = getDayOfWeek(selectedDate);
-        console.log(`Generating schedule for ${dayOfWeek}...`);
-
-        const dailySchedule = generateDailySchedule(
-          selectedDate,
-          semesterConfig.schedule,
-          semesterConfig.subjects
-        );
-
-        console.log(`Generated ${dailySchedule.length} periods for ${dayOfWeek}`);
-
-        // Fetch attendance records for the user on that date
-        const { data: attendanceData, error: attendanceError } = await supabase
-          .from('attendance_records')
-          .select('subject_id, status')
-          .eq('user_id', user.id)
-          .eq('date', dateStr);
-
-        if (attendanceError) {
-          console.error('Attendance fetch error:', attendanceError);
-          // Don't fail completely, just log the error
-        }
-
-        // Create a map of subject_id to status for quick lookup
-        const attendanceMap = new Map();
-        attendanceData?.forEach((record) => {
-          // Map database status to UI status
-          const uiStatus =
-            record.status === 'present'
-              ? 'attended'
-              : record.status === 'absent'
-                ? 'missed'
-                : record.status === 'late'
-                  ? 'cancelled'
-                  : 'pending';
-          attendanceMap.set(record.subject_id, uiStatus);
-        });
-
-        // Enrich schedule with subject details
-        const enrichedSchedule = enrichScheduleWithSubjectDetails(
-          dailySchedule,
-          semesterConfig.subjects
-        );
-
-        // Combine schedule data with attendance status
-        const combinedData: ClassPeriod[] = enrichedSchedule.map((period) => ({
-          id: period.subjectId,
-          periodNumber: period.periodNumber,
-          startTime: period.startTime,
-          endTime: period.endTime,
-          subjectName: period.subjectName,
-          subjectCode: period.subjectCode,
-          classroom: period.classroom,
-          status: (attendanceMap.get(period.subjectId) || 'pending') as ClassPeriod['status'],
-        }));
-
-        setPeriods(combinedData);
-      } catch (error) {
-        console.error('Error fetching schedule and attendance:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        setError(errorMessage);
-        setPeriods([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchScheduleAndAttendance();
-  }, [isHydrated, selectedDate, user, dateStr]);
 
   if (!isHydrated) {
     return (
@@ -184,52 +78,8 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
     );
   }
 
-  const handleStatusClick = async (
-    periodId: string,
-    status: 'attended' | 'missed' | 'cancelled'
-  ) => {
-    try {
-      if (!user) {
-        alert('You must be logged in to record attendance');
-        return;
-      }
-
-      // Map status to database format
-      const dbStatus = status === 'attended' ? 'present' : status === 'missed' ? 'absent' : 'late';
-
-      // Optimistically update local state first
-      setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status } : p)));
-
-      // Record attendance to database
-      const { recordAttendance } = await import('@/lib/attendanceRecordingService');
-      const { error } = await recordAttendance({
-        userId: user.id,
-        subjectId: periodId,
-        date: dateStr,
-        status: dbStatus,
-      });
-
-      if (error) {
-        console.error('Failed to record attendance:', error);
-        // Revert the optimistic update
-        setPeriods((prev) =>
-          prev.map((p) => (p.id === periodId ? { ...p, status: 'pending' } : p))
-        );
-        alert(`Failed to save attendance: ${error.message}`);
-        return;
-      }
-
-      console.log('Attendance recorded successfully');
-
-      // Notify parent component
-      if (typeof onStatusChange === 'function') {
-        onStatusChange(periodId, status);
-      }
-    } catch (error) {
-      console.error('Error in handleStatusClick:', error);
-      alert('An unexpected error occurred while saving attendance');
-      setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status: 'pending' } : p)));
-    }
+  const handleStatusClick = (periodId: string, status: 'attended' | 'missed' | 'cancelled') => {
+    onStatusChange(periodId, status);
   };
 
   const getStatusConfig = (status: string) => {

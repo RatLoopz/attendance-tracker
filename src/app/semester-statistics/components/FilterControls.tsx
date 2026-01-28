@@ -3,35 +3,25 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-interface FilterControlsProps {
-  onFilterChange: (filters: FilterState) => void;
-  subjects: Array<{ id: string; name: string; code: string }>;
-}
-
 interface FilterState {
   subject: string;
   status: string;
   sortBy: string;
 }
 
-const FilterControls = ({ onFilterChange, subjects }: FilterControlsProps) => {
+interface FilterControlsProps {
+  filters: FilterState;
+  onFilterChange: (filters: FilterState) => void;
+  subjects: Array<{ id: string; name: string; code: string }>;
+}
+
+const FilterControls = ({ filters, onFilterChange, subjects }: FilterControlsProps) => {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    subject: 'all',
-    status: 'all',
-    sortBy: 'percentage',
-  });
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (isHydrated) {
-      onFilterChange(filters);
-    }
-  }, [filters, isHydrated, onFilterChange]);
 
   if (!isHydrated) {
     return (
@@ -42,11 +32,11 @@ const FilterControls = ({ onFilterChange, subjects }: FilterControlsProps) => {
   }
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    onFilterChange({ ...filters, [key]: value });
   };
 
   const resetFilters = () => {
-    setFilters({
+    onFilterChange({
       subject: 'all',
       status: 'all',
       sortBy: 'percentage',

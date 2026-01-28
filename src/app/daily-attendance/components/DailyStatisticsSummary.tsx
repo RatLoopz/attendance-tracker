@@ -3,113 +3,27 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
 
-interface SubjectStats {
-  subjectName: string;
-  subjectCode: string;
-  totalClasses: number;
+import { SubjectStats } from '@/lib/attendanceStatsService';
+
+export interface DailyTotals {
   attended: number;
   missed: number;
   cancelled: number;
-  percentage: number;
-  status: 'safe' | 'warning' | 'danger';
+  total: number;
 }
 
 interface DailyStatisticsSummaryProps {
-  selectedDate: Date;
+  dailyTotals: DailyTotals;
+  subjectStats: SubjectStats[];
+  loading?: boolean;
 }
 
-const DailyStatisticsSummary = ({ selectedDate }: DailyStatisticsSummaryProps) => {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [stats, setStats] = useState<SubjectStats[]>([]);
-  const [dailyTotals, setDailyTotals] = useState({
-    attended: 0,
-    missed: 0,
-    cancelled: 0,
-    total: 0,
-  });
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-
-    const mockStats: SubjectStats[] = [
-      {
-        subjectName: 'Data Structures',
-        subjectCode: 'CS201',
-        totalClasses: 45,
-        attended: 38,
-        missed: 5,
-        cancelled: 2,
-        percentage: 84.4,
-        status: 'safe',
-      },
-      {
-        subjectName: 'Database Management',
-        subjectCode: 'CS202',
-        totalClasses: 42,
-        attended: 35,
-        missed: 5,
-        cancelled: 2,
-        percentage: 83.3,
-        status: 'safe',
-      },
-      {
-        subjectName: 'Operating Systems',
-        subjectCode: 'CS203',
-        totalClasses: 48,
-        attended: 34,
-        missed: 12,
-        cancelled: 2,
-        percentage: 70.8,
-        status: 'warning',
-      },
-      {
-        subjectName: 'Computer Networks',
-        subjectCode: 'CS204',
-        totalClasses: 40,
-        attended: 27,
-        missed: 11,
-        cancelled: 2,
-        percentage: 67.5,
-        status: 'danger',
-      },
-      {
-        subjectName: 'Software Engineering',
-        subjectCode: 'CS205',
-        totalClasses: 44,
-        attended: 36,
-        missed: 6,
-        cancelled: 2,
-        percentage: 81.8,
-        status: 'safe',
-      },
-      {
-        subjectName: 'Web Technologies',
-        subjectCode: 'CS206',
-        totalClasses: 46,
-        attended: 39,
-        missed: 5,
-        cancelled: 2,
-        percentage: 84.8,
-        status: 'safe',
-      },
-    ];
-
-    setStats(mockStats);
-
-    const totals = {
-      attended: 4,
-      missed: 1,
-      cancelled: 1,
-      total: 6,
-    };
-    setDailyTotals(totals);
-  }, [isHydrated, selectedDate]);
-
-  if (!isHydrated) {
+const DailyStatisticsSummary = ({
+  dailyTotals,
+  subjectStats,
+  loading = false,
+}: DailyStatisticsSummaryProps) => {
+  if (loading) {
     return (
       <div className="space-y-4">
         <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
@@ -199,8 +113,19 @@ const DailyStatisticsSummary = ({ selectedDate }: DailyStatisticsSummaryProps) =
         </h3>
 
         <div className="space-y-3">
-          {stats.map((subject) => {
+          {subjectStats.map((subject) => {
             const statusConfig = getStatusConfig(subject.status);
+
+            // Calculate required classes to reach 75%
+            let requiredClasses = 0;
+            if (subject.attendancePercentage < 75) {
+              const currentTotal = subject.totalClasses;
+              const currentAttended = subject.attendedClasses;
+              // Formula: (attended + x) / (total + x) >= 0.75
+              // x = (0.75 * total - attended) / 0.25
+              requiredClasses = Math.ceil((0.75 * currentTotal - currentAttended) / 0.25);
+              requiredClasses = Math.max(0, requiredClasses);
+            }
 
             return (
               <div
@@ -221,7 +146,9 @@ const DailyStatisticsSummary = ({ selectedDate }: DailyStatisticsSummaryProps) =
                   `}
                   >
                     <Icon name={statusConfig.icon as any} size={14} variant="solid" />
-                    <span className="caption font-medium">{subject.percentage.toFixed(1)}%</span>
+                    <span className="caption font-medium">
+                      {subject.attendancePercentage.toFixed(1)}%
+                    </span>
                   </div>
                 </div>
 
@@ -231,15 +158,15 @@ const DailyStatisticsSummary = ({ selectedDate }: DailyStatisticsSummaryProps) =
                     <div className="text-xs">Total</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-medium text-success">{subject.attended}</div>
+                    <div className="font-medium text-success">{subject.attendedClasses}</div>
                     <div className="text-xs">Attended</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-medium text-error">{subject.missed}</div>
+                    <div className="font-medium text-error">{subject.missedClasses}</div>
                     <div className="text-xs">Missed</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-medium text-warning">{subject.cancelled}</div>
+                    <div className="font-medium text-warning">{subject.cancelledClasses}</div>
                     <div className="text-xs">Cancelled</div>
                   </div>
                 </div>
@@ -253,7 +180,8 @@ const DailyStatisticsSummary = ({ selectedDate }: DailyStatisticsSummaryProps) =
                         className="flex-shrink-0 mt-0.5"
                       />
                       <span>
-                        Attend next <strong>8 classes</strong> consecutively to reach 75% attendance
+                        Attend next <strong>{requiredClasses} classes</strong> consecutively to
+                        reach 75% attendance
                       </span>
                     </div>
                   </div>
@@ -268,7 +196,7 @@ const DailyStatisticsSummary = ({ selectedDate }: DailyStatisticsSummaryProps) =
                         className="flex-shrink-0 mt-0.5"
                       />
                       <span>
-                        Attend next <strong>4 classes</strong> to maintain safe zone
+                        Attend next <strong>{requiredClasses} classes</strong> to reach safe zone
                       </span>
                     </div>
                   </div>

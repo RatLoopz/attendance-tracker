@@ -1,19 +1,37 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '@/components/common/Header';
 import DateContextIndicator from '@/components/common/DateContextIndicator';
 import QuickStatusIndicator from '@/components/common/QuickStatusIndicator';
 import DateNavigator from './DateNavigator';
-import DailyScheduleTimeline from './DailyScheduleTimeline';
-import DailyStatisticsSummary from './DailyStatisticsSummary';
+import DailyScheduleTimeline, { ClassPeriod } from './DailyScheduleTimeline';
+import DailyStatisticsSummary, { DailyTotals } from './DailyStatisticsSummary';
 import DateNotesEditor from './DateNotesEditor';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { getSubjectAttendanceStats, SubjectStats } from '@/lib/attendanceStatsService';
+import { getSemesterConfiguration } from '@/lib/semesterConfig';
+import {
+  generateDailySchedule,
+  enrichScheduleWithSubjectDetails,
+  getDayOfWeek,
+  isWeekend,
+} from '@/lib/scheduleGenerator';
+import { recordAttendance } from '@/lib/attendanceRecordingService';
 
 const DailyAttendanceContent = () => {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
+  // State for data
+  const [periods, setPeriods] = useState<ClassPeriod[]>([]);
+  const [subjectStats, setSubjectStats] = useState<SubjectStats[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Update date from search params
   useEffect(() => {
     const dateParam = searchParams.get('date');
     if (dateParam) {
@@ -21,30 +39,130 @@ const DailyAttendanceContent = () => {
     }
   }, [searchParams]);
 
-  const handleStatusChange = async (periodId: string, status: 'attended' | 'missed' | 'cancelled') => {
-    try {
-      // This would be replaced with actual implementation using Supabase
-      // The upsert would use a composite key of (user_id, date, subject_id)
-      console.log(`Period ${periodId} marked as ${status}`);
+  // Fetch all data
+  useEffect(() => {
+    if (!user) return;
 
-      // Example implementation:
-      // const { error } = await supabase
-      //   .from('attendance_records')
-      //   .upsert({
-      //     user_id: user.id,
-      //     date: selectedDate.toISOString().split('T')[0],
-      //     subject_id: periodId,
-      //     status: status,
-      //     updated_at: new Date().toISOString()
-      //   }, {
-      //     onConflict: 'user_id,date,subject_id'
-      //   });
-      // 
-      // if (error) throw error;
-    } catch (error) {
-      console.error('Error updating attendance:', error);
-      // Add toast notification here
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const dateStr = selectedDate.toISOString().split('T')[0];
+
+        // 1. Fetch Semester Config & Schedule
+        const { data: semesterConfig, error: configError } = await getSemesterConfiguration(
+          user.id
+        );
+
+        if (configError) throw configError;
+
+        if (!semesterConfig) {
+          setPeriods([]); // No config
+        } else {
+          // Generate schedule
+          if (isWeekend(selectedDate)) {
+            setPeriods([]);
+          } else {
+            const dayOfWeek = getDayOfWeek(selectedDate);
+            const dailySchedule = generateDailySchedule(
+              selectedDate,
+              semesterConfig.schedule,
+              semesterConfig.subjects
+            );
+
+            // Fetch daily attendance records
+            const { data: attendanceData } = await supabase
+              .from('attendance_records')
+              .select('subject_id, status')
+              .eq('user_id', user.id)
+              .eq('date', dateStr);
+
+            const attendanceMap = new Map();
+            attendanceData?.forEach((record) => {
+              const uiStatus =
+                record.status === 'present'
+                  ? 'attended'
+                  : record.status === 'absent'
+                    ? 'missed'
+                    : record.status === 'late'
+                      ? 'cancelled'
+                      : 'pending';
+              attendanceMap.set(record.subject_id, uiStatus);
+            });
+
+            // Associate subject details
+            const enriched = enrichScheduleWithSubjectDetails(
+              dailySchedule,
+              semesterConfig.subjects
+            );
+
+            // Combine
+            const combinedPeriods: ClassPeriod[] = enriched.map((p) => ({
+              id: p.subjectId,
+              periodNumber: p.periodNumber,
+              startTime: p.startTime,
+              endTime: p.endTime,
+              subjectName: p.subjectName,
+              subjectCode: p.subjectCode,
+              classroom: p.classroom,
+              status: (attendanceMap.get(p.subjectId) || 'pending') as ClassPeriod['status'],
+            }));
+
+            setPeriods(combinedPeriods);
+          }
+        }
+
+        // 2. Fetch Subject Statistics (for summary)
+        const { data: stats, error: statsError } = await getSubjectAttendanceStats(user.id);
+        if (statsError) console.error('Error fetching stats:', statsError);
+        setSubjectStats(stats || []);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, selectedDate]);
+
+  // Handle status update
+  const handleStatusChange = async (
+    periodId: string,
+    status: 'attended' | 'missed' | 'cancelled'
+  ) => {
+    if (!user) return;
+
+    // Optimistic update
+    setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status } : p)));
+
+    const dbStatus = status === 'attended' ? 'present' : status === 'missed' ? 'absent' : 'late';
+    const dateStr = selectedDate.toISOString().split('T')[0];
+
+    const { error } = await recordAttendance({
+      userId: user.id,
+      subjectId: periodId,
+      date: dateStr,
+      status: dbStatus,
+    });
+
+    if (error) {
+      console.error('Failed to update attendance:', error);
+      // Revert on error
+      setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status: 'pending' } : p)));
+      return;
     }
+
+    // Refresh statistics silently after update
+    const { data: stats } = await getSubjectAttendanceStats(user.id);
+    if (stats) setSubjectStats(stats);
+  };
+
+  // Calculate daily totals
+  const dailyTotals: DailyTotals = {
+    attended: periods.filter((p) => p.status === 'attended').length,
+    missed: periods.filter((p) => p.status === 'missed').length,
+    cancelled: periods.filter((p) => p.status === 'cancelled').length,
+    total: periods.length,
   };
 
   return (
@@ -70,7 +188,9 @@ const DailyAttendanceContent = () => {
                 </h2>
                 <DailyScheduleTimeline
                   selectedDate={selectedDate}
+                  periods={periods}
                   onStatusChange={handleStatusChange}
+                  loading={loading}
                 />
               </div>
 
@@ -78,7 +198,11 @@ const DailyAttendanceContent = () => {
             </div>
 
             <div className="lg:col-span-1">
-              <DailyStatisticsSummary selectedDate={selectedDate} />
+              <DailyStatisticsSummary
+                dailyTotals={dailyTotals}
+                subjectStats={subjectStats}
+                loading={loading}
+              />
             </div>
           </div>
         </div>

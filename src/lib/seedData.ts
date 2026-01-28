@@ -1,5 +1,15 @@
 /**
- * Seed data for CSE 6th Semester B.Tech
+ * ⚠️ WARNING: This file is for REFERENCE ONLY
+ *
+ * This file contains example seed data for CSE 6th Semester B.Tech.
+ * IT IS NOT IMPORTED OR USED ANYWHERE IN THE APPLICATION.
+ *
+ * All academic data (subjects, schedules, etc.) is now fully dynamic
+ * and user-specific, stored in the database via semester_configurations table.
+ *
+ * You can use this as a template when configuring your semester for the first time,
+ * but the application does NOT load this data automatically.
+ *
  * Based on actual timetable for B.Tech 6th Semester CSE
  */
 

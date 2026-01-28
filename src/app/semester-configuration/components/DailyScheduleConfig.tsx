@@ -42,7 +42,7 @@ const DailyScheduleConfig = ({
     { value: 'saturday', label: 'Saturday' },
     { value: 'sunday', label: 'Sunday' },
   ];
-  
+
   const defaultPeriods = [
     { periodNumber: 1, startTime: '09:00', endTime: '10:00' },
     { periodNumber: 2, startTime: '10:00', endTime: '11:00' },
@@ -146,7 +146,7 @@ const DailyScheduleConfig = ({
             {schedule.map((period) => (
               <div
                 key={period.periodNumber}
-                className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-background rounded-lg border border-border"
+                className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-background rounded-lg border border-border"
               >
                 <div>
                   <p className="caption text-muted-foreground mb-2">Period {period.periodNumber}</p>
@@ -191,20 +191,6 @@ const DailyScheduleConfig = ({
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="caption text-muted-foreground mb-2 block">Classroom</label>
-                  <input
-                    type="text"
-                    value={period.classroom}
-                    onChange={(e) =>
-                      handlePeriodChange(period.periodNumber, 'classroom', e.target.value)
-                    }
-                    placeholder="Room 101"
-                    disabled={!period.subjectId}
-                    className="w-full px-3 py-2 bg-card border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
                 </div>
               </div>
             ))}

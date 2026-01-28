@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
-
-interface SubjectAlert {
-  name: string;
-  percentage: number;
-  status: 'safe' | 'warning' | 'danger';
-  requiredClasses: number;
-}
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  getOverallAttendancePercentage,
+  getAttendanceAlertsForSubjects,
+  SubjectAlert,
+} from '@/lib/attendanceStatsService';
 
 interface SemesterInfoPanelProps {
   semesterStart: string;
@@ -17,28 +16,59 @@ interface SemesterInfoPanelProps {
   className?: string;
 }
 
-const SemesterInfoPanel = ({ semesterStart, semesterEnd, className = '' }: SemesterInfoPanelProps) => {
+const SemesterInfoPanel = ({
+  semesterStart,
+  semesterEnd,
+  className = '',
+}: SemesterInfoPanelProps) => {
+  const { user } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
-  const [overallPercentage, setOverallPercentage] = useState(82);
+  const [overallPercentage, setOverallPercentage] = useState(0);
   const [subjectAlerts, setSubjectAlerts] = useState<SubjectAlert[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) return;
+    const fetchAttendanceData = async () => {
+      if (!isHydrated || !user) {
+        setLoading(false);
+        return;
+      }
 
-    const mockSubjects: SubjectAlert[] = [
-      { name: 'Data Structures', percentage: 72, status: 'warning', requiredClasses: 3 },
-      { name: 'Operating Systems', percentage: 68, status: 'danger', requiredClasses: 5 },
-      { name: 'Database Management', percentage: 85, status: 'safe', requiredClasses: 0 },
-      { name: 'Computer Networks', percentage: 78, status: 'safe', requiredClasses: 0 },
-      { name: 'Software Engineering', percentage: 88, status: 'safe', requiredClasses: 0 },
-    ];
+      try {
+        setLoading(true);
 
-    setSubjectAlerts(mockSubjects);
-  }, [isHydrated]);
+        // Fetch overall attendance percentage
+        const { percentage, error: percentageError } = await getOverallAttendancePercentage(
+          user.id
+        );
+
+        if (percentageError) {
+          console.error('Error fetching overall percentage:', percentageError);
+        } else {
+          setOverallPercentage(percentage);
+        }
+
+        // Fetch subject alerts
+        const { data: alerts, error: alertsError } = await getAttendanceAlertsForSubjects(user.id);
+
+        if (alertsError) {
+          console.error('Error fetching subject alerts:', alertsError);
+        } else {
+          setSubjectAlerts(alerts || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching attendance data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAttendanceData();
+  }, [isHydrated, user]);
 
   const formatDate = (dateString: string) => {
     if (!isHydrated) return dateString;
@@ -72,7 +102,7 @@ const SemesterInfoPanel = ({ semesterStart, semesterEnd, className = '' }: Semes
     }
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || loading) {
     return (
       <div className={`bg-card rounded-lg shadow-elevation-2 p-6 ${className}`}>
         <div className="animate-pulse space-y-6">
@@ -122,12 +152,18 @@ const SemesterInfoPanel = ({ semesterStart, semesterEnd, className = '' }: Semes
         <div className="bg-muted rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="caption text-muted-foreground">Current Status</span>
-            <span className="data-text text-2xl font-semibold text-foreground">{overallPercentage}%</span>
+            <span className="data-text text-2xl font-semibold text-foreground">
+              {overallPercentage}%
+            </span>
           </div>
           <div className="w-full bg-background rounded-full h-2 overflow-hidden">
             <div
               className={`h-full transition-smooth ${
-                overallPercentage >= 75 ? 'bg-success' : overallPercentage >= 70 ? 'bg-warning' : 'bg-error'
+                overallPercentage >= 75
+                  ? 'bg-success'
+                  : overallPercentage >= 70
+                    ? 'bg-warning'
+                    : 'bg-error'
               }`}
               style={{ width: `${overallPercentage}%` }}
             />
@@ -138,30 +174,35 @@ const SemesterInfoPanel = ({ semesterStart, semesterEnd, className = '' }: Semes
       <div className="border-t border-border pt-6">
         <h4 className="text-lg font-semibold text-foreground mb-4">Subject Alerts</h4>
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
-          {subjectAlerts
-            .filter((subject) => subject.status !== 'safe')
-            .map((subject, index) => (
+          {subjectAlerts.length > 0 ? (
+            subjectAlerts.map((subject, index) => (
               <div
                 key={index}
                 className={`p-3 rounded-lg ${getStatusColor(subject.status)} flex items-start gap-3`}
               >
                 <Icon name={getStatusIcon(subject.status) as any} size={20} variant="solid" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-foreground">{subject.name}</div>
+                  <div className="text-sm font-medium text-foreground">{subject.subjectName}</div>
                   <div className="caption text-muted-foreground mt-1">
-                    {subject.percentage}% attendance
+                    {subject.attendancePercentage}% attendance
                   </div>
                   {subject.requiredClasses > 0 && (
                     <div className="caption mt-1">
-                      Attend next {subject.requiredClasses} class{subject.requiredClasses > 1 ? 'es' : ''} to reach 75%
+                      Attend next {subject.requiredClasses} class
+                      {subject.requiredClasses > 1 ? 'es' : ''} to reach 75%
                     </div>
                   )}
                 </div>
               </div>
-            ))}
-          {subjectAlerts.filter((subject) => subject.status !== 'safe').length === 0 && (
+            ))
+          ) : (
             <div className="text-center py-6">
-              <Icon name="CheckCircleIcon" size={48} className="text-success mx-auto mb-2" variant="solid" />
+              <Icon
+                name="CheckCircleIcon"
+                size={48}
+                className="text-success mx-auto mb-2"
+                variant="solid"
+              />
               <p className="caption text-muted-foreground">All subjects are in safe zone!</p>
             </div>
           )}

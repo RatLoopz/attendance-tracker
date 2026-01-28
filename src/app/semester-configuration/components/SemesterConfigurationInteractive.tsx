@@ -53,81 +53,44 @@ const SemesterConfigurationInteractive = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [saveError, setSaveError] = useState('');
 
+  // Helper function to get current academic year dates
+  const getCurrentAcademicYearDates = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentYear = now.getFullYear();
+
+    // If we're in Jan-June, it's the even semester (Spring)
+    // If we're in Jul-Dec, it's the odd semester (Fall)
+    const isEvenSemester = currentMonth < 6;
+
+    if (isEvenSemester) {
+      // Even semester: January to May
+      return {
+        startDate: `${currentYear}-01-15`,
+        endDate: `${currentYear}-05-30`,
+        academicYear: `${currentYear - 1}-${currentYear}`,
+        semesterType: 'even' as const,
+      };
+    } else {
+      // Odd semester: August to December
+      return {
+        startDate: `${currentYear}-08-01`,
+        endDate: `${currentYear}-12-20`,
+        academicYear: `${currentYear}-${currentYear + 1}`,
+        semesterType: 'odd' as const,
+      };
+    }
+  };
+
+  const defaultDates = getCurrentAcademicYearDates();
+
   const [configuration, setConfiguration] = useState<ConfigurationData>({
-    startDate: '2026-01-15',
-    endDate: '2026-05-30',
-    academicYear: '2025-2026',
-    semesterType: 'even',
-    subjects: [
-      {
-        id: 'sub-1',
-        courseCode: 'CS301',
-        name: 'Data Structures and Algorithms',
-        weeklyClasses: 4,
-      },
-      {
-        id: 'sub-2',
-        courseCode: 'CS302',
-        name: 'Database Management Systems',
-        weeklyClasses: 3,
-      },
-      {
-        id: 'sub-3',
-        courseCode: 'CS303',
-        name: 'Operating Systems',
-        weeklyClasses: 3,
-      },
-      {
-        id: 'sub-4',
-        courseCode: 'CS304',
-        name: 'Computer Networks',
-        weeklyClasses: 3,
-      },
-      {
-        id: 'sub-5',
-        courseCode: 'MA301',
-        name: 'Discrete Mathematics',
-        weeklyClasses: 3,
-      },
-    ],
-    schedule: [
-      {
-        periodNumber: 1,
-        startTime: '09:00',
-        endTime: '10:00',
-        subjectId: 'sub-1',
-        classroom: 'Lab 201',
-      },
-      {
-        periodNumber: 2,
-        startTime: '10:00',
-        endTime: '11:00',
-        subjectId: 'sub-2',
-        classroom: 'Room 305',
-      },
-      {
-        periodNumber: 3,
-        startTime: '11:00',
-        endTime: '12:00',
-        subjectId: 'sub-3',
-        classroom: 'Room 402',
-      },
-      { periodNumber: 4, startTime: '12:00', endTime: '13:00', subjectId: '', classroom: '' },
-      {
-        periodNumber: 5,
-        startTime: '14:00',
-        endTime: '15:00',
-        subjectId: 'sub-4',
-        classroom: 'Lab 103',
-      },
-      {
-        periodNumber: 6,
-        startTime: '15:00',
-        endTime: '16:00',
-        subjectId: 'sub-5',
-        classroom: 'Room 210',
-      },
-    ],
+    startDate: defaultDates.startDate,
+    endDate: defaultDates.endDate,
+    academicYear: defaultDates.academicYear,
+    semesterType: defaultDates.semesterType,
+    subjects: [], // Empty by default - user must add
+    schedule: [], // Empty by default - user must configure
   });
 
   useEffect(() => {
