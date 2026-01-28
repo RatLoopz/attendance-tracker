@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/contexts/AuthContext';
+import { getOverallAttendancePercentage } from '@/lib/attendanceStatsService';
 
 interface QuickStatusIndicatorProps {
   className?: string;
@@ -18,9 +20,46 @@ interface StatusConfig {
 }
 
 const QuickStatusIndicator = ({ className = '' }: QuickStatusIndicatorProps) => {
+  const { user } = useAuth();
   const [status, setStatus] = useState<AttendanceStatus>('safe');
-  const [percentage, setPercentage] = useState('82');
+  const [percentage, setPercentage] = useState('0');
+  const [stats, setStats] = useState({
+    attended: 0,
+    total: 0,
+    requiredFor75: 0,
+  });
   const [isExpanded, setIsExpanded] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+
+      try {
+        const result = await getOverallAttendancePercentage(user.id);
+        if (!result.error) {
+          setPercentage(result.percentage.toString());
+          setStats({
+            attended: result.attended,
+            total: result.total,
+            requiredFor75: result.requiredFor75,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching quick stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+
+    // Set up an interval to refresh stats occasionally or listen to an event
+    // For now, simpler is better. Maybe in a real app we'd use a swr/react-query
+    const interval = setInterval(fetchStats, 30000); // 30 seconds refresh
+
+    return () => clearInterval(interval);
+  }, [user, isExpanded]); // Re-fetch when expanded too, to ensure freshness
 
   useEffect(() => {
     const percentageNum = parseInt(percentage);
@@ -59,6 +98,8 @@ const QuickStatusIndicator = ({ className = '' }: QuickStatusIndicatorProps) => 
   };
 
   const currentConfig = statusConfig[status];
+
+  if (loading && !user) return null;
 
   return (
     <div className={`relative ${className}`}>
@@ -107,15 +148,15 @@ const QuickStatusIndicator = ({ className = '' }: QuickStatusIndicatorProps) => 
           <div className="space-y-2 caption text-muted-foreground">
             <div className="flex justify-between">
               <span>Classes Attended:</span>
-              <span className="font-medium text-popover-foreground">45</span>
+              <span className="font-medium text-popover-foreground">{stats.attended}</span>
             </div>
             <div className="flex justify-between">
               <span>Total Classes:</span>
-              <span className="font-medium text-popover-foreground">55</span>
+              <span className="font-medium text-popover-foreground">{stats.total}</span>
             </div>
             <div className="flex justify-between">
               <span>Required for 75%:</span>
-              <span className="font-medium text-popover-foreground">41</span>
+              <span className="font-medium text-popover-foreground">{stats.requiredFor75}</span>
             </div>
           </div>
 

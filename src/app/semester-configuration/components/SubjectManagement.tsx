@@ -36,10 +36,21 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
     }
   }, [subjects, isHydrated]);
 
+  useEffect(() => {
+    // Sync local state with props when parent updates (e.g. after initial load or manual save)
+    // We check for length mismatch or if the current local state is empty but props are not
+    if (initialSubjects && initialSubjects.length > 0) {
+      const isDifferent = JSON.stringify(initialSubjects) !== JSON.stringify(subjects);
+      if (isDifferent) {
+        setSubjects(initialSubjects);
+      }
+    }
+  }, [initialSubjects]);
+
   const handleAddSubject = () => {
     // Reset previous errors
     setError('');
-    
+
     // Validate required fields
     if (!newSubject.courseCode.trim() || !newSubject.name.trim()) {
       setError('Course code and name are required');
@@ -52,9 +63,10 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
       return;
     }
 
-    // Check for duplicate course codes
-    if (subjects.some((s) => s.courseCode === newSubject.courseCode.trim())) {
-      setError('Course code already exists');
+    // Check for duplicate course codes (case-insensitive)
+    const normalizedNewCode = newSubject.courseCode.trim().toUpperCase();
+    if (subjects.some((s) => s.courseCode.toUpperCase() === normalizedNewCode)) {
+      setError(`Course code "${normalizedNewCode}" is already added`);
       return;
     }
 
@@ -66,20 +78,25 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
 
     const subject: Subject = {
       id: `subject-${Date.now()}`,
-      courseCode: newSubject.courseCode.trim(),
+      courseCode: normalizedNewCode,
       name: newSubject.name.trim(),
-      weeklyClasses: newSubject.weeklyClasses
+      weeklyClasses: newSubject.weeklyClasses,
     };
 
     console.log('Adding new subject:', subject);
-    setSubjects([...subjects, subject]);
+    // Directly updating local state first
+    setSubjects((prev) => [...prev, subject]);
     setNewSubject({ courseCode: '', name: '', weeklyClasses: 3 });
     setIsAddingSubject(false);
     setError('');
   };
 
   const handleRemoveSubject = (id: string) => {
-    setSubjects(subjects.filter((s) => s.id !== id));
+    if (
+      confirm('Are you sure you want to drop this subject? All associated data will be removed.')
+    ) {
+      setSubjects(subjects.filter((s) => s.id !== id));
+    }
   };
 
   const handleUpdateWeeklyClasses = (id: string, value: number) => {
@@ -124,7 +141,7 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
       </div>
 
       {isAddingSubject && (
-        <div className="mb-6 p-4 bg-muted rounded-lg border border-border">
+        <div className="mb-6 p-4 bg-muted rounded-lg border border-border animate-fade-in">
           <h3 className="text-sm font-medium text-foreground mb-4">Add New Subject</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
@@ -191,9 +208,12 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
       )}
 
       {subjects.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
           <Icon name="BookOpenIcon" size={48} className="text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground mb-4">No subjects added yet</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">No subjects enrolled yet</h3>
+          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+            Add your semester subjects here to start tracking attendance and creating your schedule.
+          </p>
           <button
             onClick={() => setIsAddingSubject(true)}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-smooth"
@@ -203,10 +223,14 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
         </div>
       ) : (
         <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm text-muted-foreground px-2">
+            <span>Current Enrolled Subjects</span>
+            <span>{subjects.length} Subjects</span>
+          </div>
           {subjects.map((subject) => (
             <div
               key={subject.id}
-              className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border"
+              className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border group hover:border-primary/50 transition-smooth"
             >
               <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -233,10 +257,11 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
               </div>
               <button
                 onClick={() => handleRemoveSubject(subject.id)}
-                className="p-2 text-error hover:bg-error/10 rounded-lg transition-smooth"
-                title="Remove subject"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-error hover:bg-error/10 rounded-lg transition-smooth"
+                title="Drop this subject"
               >
-                <Icon name="TrashIcon" size={20} />
+                <Icon name="TrashIcon" size={18} />
+                <span className="text-sm font-medium">Drop</span>
               </button>
             </div>
           ))}
@@ -244,10 +269,9 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
       )}
 
       {subjects.length > 0 && (
-        <div className="mt-4 p-3 bg-muted rounded-lg">
+        <div className="mt-4 p-3 bg-muted rounded-lg flex justify-between items-center">
           <p className="text-sm text-foreground">
-            <span className="font-medium">Total Subjects:</span> {subjects.length} |
-            <span className="font-medium ml-2">Total Weekly Classes:</span>{' '}
+            <span className="font-medium">Total Weekly Classes:</span>{' '}
             {subjects.reduce((sum, s) => sum + s.weeklyClasses, 0)}
           </p>
         </div>

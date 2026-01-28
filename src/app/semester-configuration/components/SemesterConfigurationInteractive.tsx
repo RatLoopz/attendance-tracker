@@ -232,11 +232,11 @@ const SemesterConfigurationInteractive = () => {
     );
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Icon name="Cog6ToothIcon" size={48} className="text-primary mx-auto mb-4 animate-spin" />
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading configuration...</p>
         </div>
       </div>

@@ -18,14 +18,53 @@ export interface SubjectAlert extends SubjectStats {
 }
 
 /**
+ * Calculates how many more classes need to be attended to reach 75% attendance
+ */
+export const calculateRequiredClassesToReach75Percent = (
+  totalClasses: number,
+  attendedClasses: number
+): number => {
+  if (totalClasses === 0) return 0;
+
+  const currentPercentage = (attendedClasses / totalClasses) * 100;
+
+  if (currentPercentage >= 75) {
+    return 0; // Already at or above 75%
+  }
+
+  // Formula: (attended + x) / (total + x) = 0.75
+  // Solving for x: attended + x = 0.75 * total + 0.75 * x
+  // x - 0.75 * x = 0.75 * total - attended
+  // 0.25 * x = 0.75 * total - attended
+  // x = (0.75 * total - attended) / 0.25
+  // x = 3 * (0.75 * total - attended)
+
+  const requiredClasses = Math.ceil((0.75 * totalClasses - attendedClasses) / 0.25);
+
+  return Math.max(0, requiredClasses);
+};
+
+/**
  * Calculates overall attendance percentage for a user
  */
 export const getOverallAttendancePercentage = async (
   userId: string
-): Promise<{ percentage: number; error: any }> => {
+): Promise<{
+  percentage: number;
+  attended: number;
+  total: number;
+  requiredFor75: number;
+  error: any;
+}> => {
   try {
     if (!userId) {
-      return { percentage: 0, error: { message: 'User ID is required' } };
+      return {
+        percentage: 0,
+        attended: 0,
+        total: 0,
+        requiredFor75: 0,
+        error: { message: 'User ID is required' },
+      };
     }
 
     // Fetch all attendance records for the user
@@ -36,11 +75,11 @@ export const getOverallAttendancePercentage = async (
 
     if (error) {
       console.error('Error fetching attendance records:', error);
-      return { percentage: 0, error };
+      return { percentage: 0, attended: 0, total: 0, requiredFor75: 0, error };
     }
 
     if (!attendanceRecords || attendanceRecords.length === 0) {
-      return { percentage: 0, error: null };
+      return { percentage: 0, attended: 0, total: 0, requiredFor75: 0, error: null };
     }
 
     // Count attended classes (status = 'present')
@@ -49,11 +88,17 @@ export const getOverallAttendancePercentage = async (
 
     const percentage = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
 
-    return { percentage, error: null };
+    // Calculate required classes for overall
+    const requiredFor75 = calculateRequiredClassesToReach75Percent(totalCount, attendedCount);
+
+    return { percentage, attended: attendedCount, total: totalCount, requiredFor75, error: null };
   } catch (error) {
     console.error('Unexpected error in getOverallAttendancePercentage:', error);
     return {
       percentage: 0,
+      attended: 0,
+      total: 0,
+      requiredFor75: 0,
       error: {
         message:
           'Failed to calculate attendance: ' +
@@ -191,33 +236,6 @@ export const getAttendanceAlertsForSubjects = async (
   }
 };
 
-/**
- * Calculates how many more classes need to be attended to reach 75% attendance
- */
-const calculateRequiredClassesToReach75Percent = (
-  totalClasses: number,
-  attendedClasses: number
-): number => {
-  if (totalClasses === 0) return 0;
-
-  const currentPercentage = (attendedClasses / totalClasses) * 100;
-
-  if (currentPercentage >= 75) {
-    return 0; // Already at or above 75%
-  }
-
-  // Formula: (attended + x) / (total + x) = 0.75
-  // Solving for x: attended + x = 0.75 * (total + x)
-  // attended + x = 0.75 * total + 0.75 * x
-  // x - 0.75 * x = 0.75 * total - attended
-  // 0.25 * x = 0.75 * total - attended
-  // x = (0.75 * total - attended) / 0.25
-  // x = 3 * (0.75 * total - attended)
-
-  const requiredClasses = Math.ceil((0.75 * totalClasses - attendedClasses) / 0.25);
-
-  return Math.max(0, requiredClasses);
-};
 
 /**
  * Calculates attendance trend data by week
