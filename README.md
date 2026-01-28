@@ -32,17 +32,99 @@ yarn dev
 
 ```
 nextjs/
-├── public/             # Static assets
-├── src/
-│   ├── app/            # App router components
-│   │   ├── layout.tsx  # Root layout component
-│   │   └── page.tsx    # Main page component
-│   ├── components/     # Reusable UI components
-│   ├── styles/         # Global styles and Tailwind configuration
-├── next.config.mjs     # Next.js configuration
-├── package.json        # Project dependencies and scripts
-├── postcss.config.js   # PostCSS configuration
-└── tailwind.config.js  # Tailwind CSS configuration
+├─ public
+│  ├─ assets
+│  │  └─ images
+│  │     └─ no_image.png
+│  └─ favicon.ico
+├─ src
+│  ├─ app
+│  │  ├─ calendar-dashboard
+│  │  │  ├─ components
+│  │  │  │  ├─ CalendarDashboardInteractive.tsx
+│  │  │  │  ├─ MonthCalendar.tsx
+│  │  │  │  ├─ SemesterInfoPanel.tsx
+│  │  │  │  └─ YearNavigator.tsx
+│  │  │  └─ page.tsx
+│  │  ├─ daily-attendance
+│  │  │  ├─ components
+│  │  │  │  ├─ DailyAttendanceInteractive.tsx
+│  │  │  │  ├─ DailyScheduleTimeline.tsx
+│  │  │  │  ├─ DailyStatisticsSummary.tsx
+│  │  │  │  ├─ DateNavigator.tsx
+│  │  │  │  └─ DateNotesEditor.tsx
+│  │  │  └─ page.tsx
+│  │  ├─ layout.tsx
+│  │  ├─ login
+│  │  │  ├─ components
+│  │  │  │  ├─ LoginFeatures.tsx
+│  │  │  │  ├─ LoginForm.tsx
+│  │  │  │  └─ LoginTestimonials.tsx
+│  │  │  └─ page.tsx
+│  │  ├─ not-found.tsx
+│  │  ├─ providers.tsx
+│  │  ├─ register
+│  │  │  ├─ components
+│  │  │  │  ├─ RegistrationBenefits.tsx
+│  │  │  │  └─ RegistrationForm.tsx
+│  │  │  └─ page.tsx
+│  │  ├─ semester-configuration
+│  │  │  ├─ components
+│  │  │  │  ├─ AcademicYearSelector.tsx
+│  │  │  │  ├─ ConfigurationPreview.tsx
+│  │  │  │  ├─ DailyScheduleConfig.tsx
+│  │  │  │  ├─ SemesterConfigurationInteractive.tsx
+│  │  │  │  ├─ SemesterDateRangeConfig.tsx
+│  │  │  │  └─ SubjectManagement.tsx
+│  │  │  └─ page.tsx
+│  │  └─ semester-statistics
+│  │     ├─ components
+│  │     │  ├─ AttendanceTrendChart.tsx
+│  │     │  ├─ ExportButton.tsx
+│  │     │  ├─ FilterControls.tsx
+│  │     │  ├─ SemesterStatisticsInteractive.tsx
+│  │     │  ├─ StatisticsHeader.tsx
+│  │     │  └─ SubjectCard.tsx
+│  │     └─ page.tsx
+│  ├─ components
+│  │  ├─ QuickStatusIndicator.module.css
+│  │  ├─ QuickStatusIndicator.tsx
+│  │  ├─ auth
+│  │  │  └─ ProtectedRoute.tsx
+│  │  ├─ common
+│  │  │  ├─ DateContextIndicator.tsx
+│  │  │  ├─ Header.tsx
+│  │  │  └─ QuickStatusIndicator.tsx
+│  │  └─ ui
+│  │     ├─ AppIcon.tsx
+│  │     ├─ AppImage.tsx
+│  │     ├─ DatabaseSetupNotification.tsx
+│  │     └─ ErrorBoundary.tsx
+│  ├─ contexts
+│  │  └─ AuthContext.tsx
+│  ├─ lib
+│  │  ├─ attendanceService.ts
+│  │  ├─ databaseSetup.ts
+│  │  ├─ semesterConfig.ts
+│  │  ├─ supabase.ts
+│  │  └─ supabase.tsx
+│  └─ styles
+│     ├─ index.css
+│     └─ tailwind.css
+├─ supabase-schema.sql
+├─ tailwind.config.js
+└─ tsconfig.json
+├─ .env
+├─ .eslintrc.json
+├─ .gitignore
+├─ .prettierignore
+├─ .prettierrc
+├─ DATABASE_SETUP.md
+├─ README.md
+├─ next-env.d.ts
+├─ next.config.mjs
+├─ package.json
+├─ postcss.config.js
 
 ```
 
