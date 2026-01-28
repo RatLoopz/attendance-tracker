@@ -4,7 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
-import { saveSemesterConfiguration, getSemesterConfiguration, SemesterConfig } from '@/lib/semesterConfig';
+import {
+  saveSemesterConfiguration,
+  getSemesterConfiguration,
+  SemesterConfig,
+} from '@/lib/semesterConfig';
 import SemesterDateRangeConfig from './SemesterDateRangeConfig';
 import AcademicYearSelector from './AcademicYearSelector';
 import SubjectManagement from './SubjectManagement';
@@ -24,6 +28,11 @@ interface SchedulePeriod {
   endTime: string;
   subjectId: string;
   classroom: string;
+  dayOfWeek?: string;
+}
+
+interface WeeklySchedule {
+  [key: string]: SchedulePeriod[]; // Monday, Tuesday, etc.
 }
 
 interface ConfigurationData {
@@ -125,21 +134,42 @@ const SemesterConfigurationInteractive = () => {
     setIsHydrated(true);
   }, []);
 
+  // Helper function to normalize schedule from WeeklySchedule to array
+  const normalizeSchedule = (schedule: any): SchedulePeriod[] => {
+    if (Array.isArray(schedule)) {
+      return schedule;
+    }
+
+    if (schedule && typeof schedule === 'object') {
+      // WeeklySchedule object - extract Monday's schedule or first available day
+      const days = Object.keys(schedule);
+      if (days.length > 0) {
+        const firstDay = days.includes('Monday') ? 'Monday' : days[0];
+        return schedule[firstDay] || [];
+      }
+    }
+
+    return [];
+  };
+
   useEffect(() => {
     const loadConfiguration = async () => {
       if (!user) return;
-      
+
       try {
         const { data, error } = await getSemesterConfiguration(user.id);
-        
+
         if (data && !error) {
+          // Normalize schedule  - convert WeeklySchedule to array if needed
+          const normalizedSchedule = normalizeSchedule(data.schedule);
+
           setConfiguration({
             startDate: data.startDate,
             endDate: data.endDate,
             academicYear: data.academicYear,
             semesterType: data.semesterType,
             subjects: data.subjects,
-            schedule: data.schedule
+            schedule: normalizedSchedule,
           });
         }
       } catch (err) {
@@ -148,7 +178,7 @@ const SemesterConfigurationInteractive = () => {
         setIsLoading(false);
       }
     };
-    
+
     if (user) {
       loadConfiguration();
     } else {
@@ -172,12 +202,36 @@ const SemesterConfigurationInteractive = () => {
     setConfiguration((prev) => ({ ...prev, schedule }));
   }, []);
 
+  // Helper function to convert schedule array to WeeklySchedule format for database
+  const convertToWeeklySchedule = (schedule: SchedulePeriod[]): WeeklySchedule => {
+    const weeklySchedule: WeeklySchedule = {};
+
+    // Group periods by day of week
+    schedule.forEach((period) => {
+      const day = period.dayOfWeek || 'Monday'; // Default to Monday if no day specified
+      if (!weeklySchedule[day]) {
+        weeklySchedule[day] = [];
+      }
+      weeklySchedule[day].push(period);
+    });
+
+    // If no days were specified, group all under Monday for backward compatibility
+    if (Object.keys(weeklySchedule).length === 0) {
+      weeklySchedule['Monday'] = schedule;
+    }
+
+    return weeklySchedule;
+  };
+
   const handleSaveConfiguration = async () => {
     if (!user) return;
-    
+
     setIsSaving(true);
-    
+
     try {
+      // Convert schedule array to WeeklySchedule format for database
+      const weeklySchedule = convertToWeeklySchedule(configuration.schedule);
+
       const { error } = await saveSemesterConfiguration({
         userId: user.id,
         startDate: configuration.startDate,
@@ -185,9 +239,9 @@ const SemesterConfigurationInteractive = () => {
         academicYear: configuration.academicYear,
         semesterType: configuration.semesterType as 'odd' | 'even',
         subjects: configuration.subjects,
-        schedule: configuration.schedule
+        schedule: weeklySchedule,
       });
-      
+
       if (error) {
         console.error('Error saving configuration:', error);
         alert('Failed to save configuration. Please try again.');
@@ -264,7 +318,11 @@ const SemesterConfigurationInteractive = () => {
       <div className="sticky bottom-4 bg-card rounded-lg p-4 shadow-elevation-4 border border-border">
         {saveError && (
           <div className="mb-4 flex items-start gap-2 p-3 bg-error/10 border border-error/20 rounded-lg">
-            <Icon name="ExclamationCircleIcon" size={20} className="text-error flex-shrink-0 mt-0.5" />
+            <Icon
+              name="ExclamationCircleIcon"
+              size={20}
+              className="text-error flex-shrink-0 mt-0.5"
+            />
             <p className="text-sm text-error">{saveError}</p>
           </div>
         )}

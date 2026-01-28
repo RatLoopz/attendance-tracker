@@ -20,10 +20,13 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
   status TEXT NOT NULL CHECK (status IN ('present', 'absent', 'late')),
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_attendance UNIQUE (user_id, subject_id, date)
 );
 
 -- Create semester_configurations table
+-- subjects JSONB format: [{"id": "IT930", "courseCode": "IT930", "name": "Data Mining & Warehousing", "weeklyClasses": 5, "type": "theory"}]
+-- schedule JSONB format: {"Monday": [{"periodNumber": 1, "startTime": "09:00", "endTime": "10:00", "subjectId": "IT930", "classroom": "Class Room III", "dayOfWeek": "Monday"}], "Tuesday": [...]}
 CREATE TABLE IF NOT EXISTS public.semester_configurations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,

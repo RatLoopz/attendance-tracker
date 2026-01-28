@@ -8,7 +8,7 @@ export interface SemesterConfig {
   academicYear: string;
   semesterType: 'odd' | 'even';
   subjects: Subject[];
-  schedule: SchedulePeriod[];
+  schedule: WeeklySchedule; // Changed from SchedulePeriod[] to WeeklySchedule
 }
 
 export interface Subject {
@@ -16,6 +16,7 @@ export interface Subject {
   courseCode: string;
   name: string;
   weeklyClasses: number;
+  type?: 'theory' | 'lab';
 }
 
 export interface SchedulePeriod {
@@ -24,6 +25,12 @@ export interface SchedulePeriod {
   endTime: string;
   subjectId: string;
   classroom: string;
+  dayOfWeek?: string;
+  isLab?: boolean;
+}
+
+export interface WeeklySchedule {
+  [key: string]: SchedulePeriod[]; // Monday, Tuesday, etc.
 }
 
 export const saveSemesterConfiguration = async (config: Omit<SemesterConfig, 'id'>) => {
@@ -244,13 +251,16 @@ export const getSubjects = async (
  */
 export const calculateTotalClasses = (
   subjectId: string,
-  schedule: SchedulePeriod[],
+  schedule: WeeklySchedule,
   startDate: string,
   endDate: string
 ): number => {
   try {
-    // Count how many times this subject appears in the weekly schedule
-    const classesPerWeek = schedule.filter((period) => period.subjectId === subjectId).length;
+    // Count how many times this subject appears in the weekly schedule across all days
+    let classesPerWeek = 0;
+    Object.values(schedule).forEach((daySchedule) => {
+      classesPerWeek += daySchedule.filter((period) => period.subjectId === subjectId).length;
+    });
 
     // Calculate number of weeks in the semester
     const start = new Date(startDate);

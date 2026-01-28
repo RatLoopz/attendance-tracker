@@ -65,14 +65,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     onChange: (event: string | null, session: Session | null) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      
+
       // Handle session expiration
       if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
         console.log('Session expired or user signed out, redirecting to login');
         router.push('/login');
         return;
       }
-      
+
       if (session?.user) profileOperations.load(session.user.id);
       else profileOperations.clear();
     },
@@ -107,43 +107,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, profileData?: Partial<UserProfile>) => {
     try {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
-          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login'
-        }
+          emailRedirectTo:
+            typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login',
+        },
       });
-      
+
       if (!error && data.user && !data.session) {
         // User signed up but needs to confirm email
-        return { 
-          data, 
+        return {
+          data,
           needsConfirmation: true,
-          message: 'Registration successful! Please check your email to confirm your account.'
+          message: 'Registration successful! Please check your email to confirm your account.',
         };
       }
-      
+
       // If registration is successful and we have profile data, create the profile
       if (!error && data.user && profileData) {
         try {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email,
-              ...profileData
-            });
-          
+          const { error: profileError } = await supabase.from('user_profiles').insert({
+            id: data.user.id,
+            email: data.user.email,
+            name: profileData.name,
+            college_name: profileData.collegeName,
+            semester: profileData.semester,
+            degree_program: profileData.degreeProgram,
+            graduation_year: profileData.graduationYear,
+          });
+
           if (profileError) {
             console.error('Profile creation error:', profileError);
             // Don't fail the registration if profile creation fails
+          } else {
+            console.log('User profile created successfully');
+
+            // Auto-create semester configuration for CSE 6th semester students
+            if (profileData.semester === '6') {
+              try {
+                const { getDefaultCSE6thSemesterConfig } = await import('../lib/seedData');
+                const { saveSemesterConfiguration } = await import('../lib/semesterConfig');
+
+                const defaultConfig = getDefaultCSE6thSemesterConfig();
+                const { error: configError } = await saveSemesterConfiguration({
+                  userId: data.user.id,
+                  ...defaultConfig,
+                });
+
+                if (configError) {
+                  console.error('Error creating default semester configuration:', configError);
+                } else {
+                  console.log(
+                    'Default semester configuration created for CSE 6th semester student'
+                  );
+                }
+              } catch (configErr) {
+                console.error('Exception creating semester configuration:', configErr);
+              }
+            }
           }
         } catch (profileErr) {
           console.error('Profile creation exception:', profileErr);
         }
       }
-      
+
       return { data, error };
     } catch {
       return { error: { message: 'Network error. Please try again.' } };

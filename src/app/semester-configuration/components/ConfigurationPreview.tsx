@@ -18,13 +18,17 @@ interface SchedulePeriod {
   classroom: string;
 }
 
+interface WeeklySchedule {
+  [key: string]: SchedulePeriod[]; // Monday, Tuesday, etc.
+}
+
 interface ConfigurationPreviewProps {
   startDate: string;
   endDate: string;
   academicYear: string;
   semesterType: string;
   subjects: Subject[];
-  schedule: SchedulePeriod[];
+  schedule: WeeklySchedule | SchedulePeriod[];
 }
 
 const ConfigurationPreview = ({
@@ -159,9 +163,34 @@ const ConfigurationPreview = ({
               <span className="caption text-muted-foreground">Daily Schedule</span>
             </div>
             <div className="space-y-2">
-              {schedule
-                .filter((p) => p.subjectId)
-                .map((period) => (
+              {(() => {
+                // Normalize schedule to array format
+                let periods: SchedulePeriod[] = [];
+
+                if (Array.isArray(schedule)) {
+                  // Already an array
+                  periods = schedule;
+                } else if (schedule && typeof schedule === 'object') {
+                  // WeeklySchedule object - extract all periods from all days
+                  const allDays = Object.keys(schedule);
+                  if (allDays.length > 0) {
+                    // Get Monday's schedule as default, or first available day
+                    const firstDay = allDays.includes('Monday') ? 'Monday' : allDays[0];
+                    periods = schedule[firstDay] || [];
+                  }
+                }
+
+                const validPeriods = periods.filter((p: SchedulePeriod) => p.subjectId);
+
+                if (validPeriods.length === 0) {
+                  return (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No classes scheduled
+                    </p>
+                  );
+                }
+
+                return validPeriods.map((period: SchedulePeriod) => (
                   <div
                     key={period.periodNumber}
                     className="flex items-center justify-between p-2 bg-card rounded"
@@ -178,12 +207,8 @@ const ConfigurationPreview = ({
                       <span className="caption text-muted-foreground">{period.classroom}</span>
                     )}
                   </div>
-                ))}
-              {schedule.filter((p) => p.subjectId).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-2">
-                  No classes scheduled
-                </p>
-              )}
+                ));
+              })()}
             </div>
           </div>
 
