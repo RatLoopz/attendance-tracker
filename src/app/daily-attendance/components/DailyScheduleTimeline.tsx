@@ -75,22 +75,23 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
 
         // Create a map of subject_id to status for quick lookup
         const attendanceMap = new Map();
-        attendanceData?.forEach(record => {
+        attendanceData?.forEach((record) => {
           attendanceMap.set(record.subject_id, record.status);
         });
 
         // Combine schedule data with attendance status
-        const combinedData: ClassPeriod[] = scheduleData?.map(period => ({
-          id: period.id,
-          periodNumber: period.period_number,
-          startTime: period.start_time,
-          endTime: period.end_time,
-          subjectName: period.subject_name,
-          subjectCode: period.subject_code,
-          classroom: period.classroom,
-          instructor: period.instructor,
-          status: attendanceMap.get(period.id) || 'pending',
-        })) || [];
+        const combinedData: ClassPeriod[] =
+          scheduleData?.map((period) => ({
+            id: period.id,
+            periodNumber: period.period_number,
+            startTime: period.start_time,
+            endTime: period.end_time,
+            subjectName: period.subject_name,
+            subjectCode: period.subject_code,
+            classroom: period.classroom,
+            instructor: period.instructor,
+            status: attendanceMap.get(period.id) || 'pending',
+          })) || [];
 
         setPeriods(combinedData);
         setRetryCount(0); // Reset retry count on successful fetch
@@ -105,7 +106,7 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
           date: dateStr,
           userId: user?.id,
           error: errorMessage,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         // Set error state for display
@@ -114,7 +115,7 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
         // Implement retry logic (max 3 retries)
         if (retryCount < 3 && !isRetry) {
           console.log(`Retrying in 2 seconds... (${retryCount + 1}/3)`);
-          setRetryCount(prev => prev + 1);
+          setRetryCount((prev) => prev + 1);
 
           setTimeout(() => {
             fetchScheduleAndAttendance(true);
@@ -244,7 +245,10 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
     );
   }
 
-  const handleStatusClick = (periodId: string, status: 'attended' | 'missed' | 'cancelled') => {
+  const handleStatusClick = async (
+    periodId: string,
+    status: 'attended' | 'missed' | 'cancelled'
+  ) => {
     try {
       // Validate inputs
       if (!periodId) {
@@ -257,29 +261,60 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
         return;
       }
 
-      // Update local state
+      if (!user) {
+        console.error('User not authenticated');
+        alert('You must be logged in to record attendance');
+        return;
+      }
+
+      // Map status to database format
+      const dbStatus = status === 'attended' ? 'present' : status === 'missed' ? 'absent' : 'late';
+
+      // Optimistically update local state first for better UX
       setPeriods((prev) => {
         const updatedPeriods = prev.map((p) => (p.id === periodId ? { ...p, status } : p));
 
         // Log the status change for debugging
-        const period = prev.find(p => p.id === periodId);
+        const period = prev.find((p) => p.id === periodId);
         if (period) {
-          console.log(`Status updated for period ${period.periodNumber} (${period.subjectName}): ${status}`);
+          console.log(
+            `Status updated for period ${period.periodNumber} (${period.subjectName}): ${status}`
+          );
         }
 
         return updatedPeriods;
       });
 
+      // Record attendance to database
+      const { recordAttendance } = await import('@/lib/attendanceRecordingService');
+      const { error } = await recordAttendance({
+        userId: user.id,
+        subjectId: periodId,
+        date: dateStr,
+        status: dbStatus,
+      });
+
+      if (error) {
+        console.error('Failed to record attendance:', error);
+        // Revert the optimistic update
+        setPeriods((prev) =>
+          prev.map((p) => (p.id === periodId ? { ...p, status: 'pending' } : p))
+        );
+        alert(`Failed to save attendance: ${error.message}`);
+        return;
+      }
+
+      console.log('Attendance recorded successfully');
+
       // Notify parent component
       if (typeof onStatusChange === 'function') {
         onStatusChange(periodId, status);
-      } else {
-        console.error('onStatusChange is not a function');
       }
     } catch (error) {
       console.error('Error in handleStatusClick:', error);
-      // Re-throw the error to let the error boundary catch it if needed
-      throw error;
+      alert('An unexpected error occurred while saving attendance');
+      // Revert optimistic update
+      setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status: 'pending' } : p)));
     }
   };
 
@@ -355,7 +390,9 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
                 <Icon name="ExclamationTriangleIcon" size={20} className="text-error" />
                 <div>
                   <h3 className="font-medium text-error">Connection Error</h3>
-                  <p className="text-sm text-muted-foreground">Failed to load schedule data. Using cached or mock data.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Failed to load schedule data. Using cached or mock data.
+                  </p>
                 </div>
               </div>
               <button
@@ -383,7 +420,7 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
                       const { data: attendanceData, error: attendanceError } = await supabase
                         .from('attendance_records')
                         .select('subject_id, status')
-                        .eq('user_id', user.id)
+                        .eq('user_id', user?.id || '')
                         .eq('date', dateStr);
 
                       if (attendanceError) {
@@ -393,28 +430,30 @@ const DailyScheduleTimeline = ({ selectedDate, onStatusChange }: DailyScheduleTi
 
                       // Create a map of subject_id to status for quick lookup
                       const attendanceMap = new Map();
-                      attendanceData?.forEach(record => {
+                      attendanceData?.forEach((record) => {
                         attendanceMap.set(record.subject_id, record.status);
                       });
 
                       // Combine schedule data with attendance status
-                      const combinedData: ClassPeriod[] = scheduleData?.map(period => ({
-                        id: period.id,
-                        periodNumber: period.period_number,
-                        startTime: period.start_time,
-                        endTime: period.end_time,
-                        subjectName: period.subject_name,
-                        subjectCode: period.subject_code,
-                        classroom: period.classroom,
-                        instructor: period.instructor,
-                        status: attendanceMap.get(period.id) || 'pending',
-                      })) || [];
+                      const combinedData: ClassPeriod[] =
+                        scheduleData?.map((period) => ({
+                          id: period.id,
+                          periodNumber: period.period_number,
+                          startTime: period.start_time,
+                          endTime: period.end_time,
+                          subjectName: period.subject_name,
+                          subjectCode: period.subject_code,
+                          classroom: period.classroom,
+                          instructor: period.instructor,
+                          status: attendanceMap.get(period.id) || 'pending',
+                        })) || [];
 
                       setPeriods(combinedData);
                       setError(null);
                     } catch (error) {
                       console.error('Error fetching schedule and attendance:', error);
-                      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                      const errorMessage =
+                        error instanceof Error ? error.message : 'Unknown error occurred';
                       setError(errorMessage);
                     } finally {
                       setLoading(false);

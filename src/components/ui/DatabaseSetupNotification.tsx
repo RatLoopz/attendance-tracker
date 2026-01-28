@@ -1,6 +1,6 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 
 export const DatabaseSetupNotification = () => {
@@ -25,38 +25,36 @@ export const DatabaseSetupNotification = () => {
   }
 
   return (
-    <Alert className="mb-4 border-amber-200 bg-amber-50">
-      <AlertCircle className="h-4 w-4 text-amber-600" />
-      <AlertTitle className="text-amber-800">Database Setup Required</AlertTitle>
-      <AlertDescription className="text-amber-700">
-        <p className="mb-2">
-          The required database tables are missing. To fix this issue:
-        </p>
-        <ol className="list-decimal list-inside mb-3 space-y-1 text-sm">
-          <li>Navigate to your Supabase project dashboard</li>
-          <li>Go to the SQL Editor tab</li>
-          <li>Copy and execute the contents of 'supabase-schema.sql' file</li>
-        </ol>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open('https://supabase.com/dashboard', '_blank')}
-            className="text-amber-700 border-amber-300 hover:bg-amber-100"
-          >
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Open Supabase
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDismiss}
-            className="text-amber-700 border-amber-300 hover:bg-amber-100"
-          >
-            Dismiss
-          </Button>
+    <div className="mb-4 border border-amber-200 bg-amber-50 rounded-lg p-4">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <h3 className="text-amber-800 font-semibold mb-2">Database Setup Required</h3>
+          <div className="text-amber-700 text-sm">
+            <p className="mb-2">The required database tables are missing. To fix this issue:</p>
+            <ol className="list-decimal list-inside mb-3 space-y-1">
+              <li>Navigate to your Supabase project dashboard</li>
+              <li>Go to the SQL Editor tab</li>
+              <li>Copy and execute the contents of &apos;supabase-schema.sql&apos; file</li>
+            </ol>
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.open('https://supabase.com/dashboard', '_blank')}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-amber-700 border border-amber-300 rounded-md hover:bg-amber-100 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open Supabase
+              </button>
+              <button
+                onClick={handleDismiss}
+                className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-700 border border-amber-300 rounded-md hover:bg-amber-100 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         </div>
-      </AlertDescription>
-    </Alert>
+      </div>
+    </div>
   );
 };
