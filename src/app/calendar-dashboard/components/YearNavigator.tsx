@@ -19,11 +19,17 @@ const YearNavigator = ({ onYearChange, className = '' }: YearNavigatorProps) => 
   if (!isHydrated) {
     return (
       <div className={`flex items-center justify-center gap-6 ${className}`}>
-        <button className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center opacity-50" disabled>
+        <button
+          className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center opacity-50"
+          disabled
+        >
           <Icon name="ChevronLeftIcon" size={20} />
         </button>
         <h2 className="text-2xl font-semibold text-foreground min-w-[100px] text-center">2026</h2>
-        <button className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center opacity-50" disabled>
+        <button
+          className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center opacity-50"
+          disabled
+        >
           <Icon name="ChevronRightIcon" size={20} />
         </button>
       </div>

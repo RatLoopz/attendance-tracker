@@ -18,10 +18,7 @@ export const checkDatabaseTables = async (): Promise<boolean> => {
     }
 
     // Check if user_profiles table exists
-    const { error: profilesError } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .limit(1);
+    const { error: profilesError } = await supabase.from('user_profiles').select('id').limit(1);
 
     if (profilesError && profilesError.code === 'PGRST205') {
       console.error('Database table "user_profiles" does not exist.');

@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkDatabaseTables, showDatabaseSetupInstructions } from './databaseSetup';
@@ -50,7 +49,11 @@ export interface Subject {
 }
 
 // Service functions
-export const fetchAttendanceRecords = async (userId: string, startDate?: string, endDate?: string) => {
+export const fetchAttendanceRecords = async (
+  userId: string,
+  startDate?: string,
+  endDate?: string
+) => {
   let query = supabase
     .from('attendance_records')
     .select('*')
@@ -97,7 +100,7 @@ export const getAttendanceStatusByDate = async (userId: string, dates: string[])
     }
 
     // Filter out any invalid date strings
-    const validDates = dates.filter(date => {
+    const validDates = dates.filter((date) => {
       return typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/);
     });
 
@@ -110,7 +113,7 @@ export const getAttendanceStatusByDate = async (userId: string, dates: string[])
     if (!supabase) {
       console.error('Supabase client is not initialized. Check environment variables:', {
         url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not set',
-        key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not set'
+        key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not set',
       });
       return {};
     }
@@ -123,21 +126,23 @@ export const getAttendanceStatusByDate = async (userId: string, dates: string[])
 
     if (error) {
       const errorObj = JSON.parse(JSON.stringify(error));
-      
+
       // Handle specific case where table doesn't exist
-      if (errorObj.code === "PGRST205") {
-        console.error(`Database table "${errorObj.message?.match(/'([^']+)'/)?.[1] || 'unknown'}" does not exist.`);
+      if (errorObj.code === 'PGRST205') {
+        console.error(
+          `Database table "${errorObj.message?.match(/'([^']+)'/)?.[1] || 'unknown'}" does not exist.`
+        );
         showDatabaseSetupInstructions();
-        
+
         // Set a flag in localStorage to show a user-friendly notification
-        if (typeof window !== "undefined") {
+        if (typeof window !== 'undefined') {
           localStorage.setItem('db_setup_required', 'true');
         }
-        
+
         // Instead of throwing, return empty object to prevent app crash
         return {};
       }
-      
+
       // Handle other errors
       console.error('Error fetching attendance by dates:', JSON.stringify(error));
       // Instead of throwing, return empty object to prevent app crash
@@ -153,7 +158,7 @@ export const getAttendanceStatusByDate = async (userId: string, dates: string[])
     // Group by date and calculate status
     const attendanceByDate: Record<string, AttendanceStatus> = {};
 
-    data.forEach(record => {
+    data.forEach((record) => {
       // Ensure record has valid date
       if (!record.date) return;
 
@@ -161,7 +166,7 @@ export const getAttendanceStatusByDate = async (userId: string, dates: string[])
         attendanceByDate[record.date] = {
           attended: 0,
           missed: 0,
-          cancelled: 0
+          cancelled: 0,
         };
       }
 
@@ -176,19 +181,26 @@ export const getAttendanceStatusByDate = async (userId: string, dates: string[])
 
     return attendanceByDate;
   } catch (err) {
-    console.error('Unexpected error in getAttendanceStatusByDate:', err instanceof Error ? err.message : JSON.stringify(err));
+    console.error(
+      'Unexpected error in getAttendanceStatusByDate:',
+      err instanceof Error ? err.message : JSON.stringify(err)
+    );
     // Return empty object instead of throwing to prevent app crash
     return {};
   }
 };
 
-export const getWeeklyAttendanceTrend = async (userId: string, semesterStart: string, semesterEnd: string) => {
+export const getWeeklyAttendanceTrend = async (
+  userId: string,
+  semesterStart: string,
+  semesterEnd: string
+) => {
   const records = await fetchAttendanceRecords(userId, semesterStart, semesterEnd);
 
   // Group by week
   const weeklyData: Record<string, { attended: number; total: number }> = {};
 
-  records.forEach(record => {
+  records.forEach((record) => {
     const date = new Date(record.date);
     const weekStart = new Date(date);
     weekStart.setDate(date.getDate() - date.getDay());
@@ -217,7 +229,7 @@ export const getWeeklyAttendanceTrend = async (userId: string, semesterStart: st
       week: weekLabel,
       percentage: data.total > 0 ? (data.attended / data.total) * 100 : 0,
       attended: data.attended,
-      total: data.total
+      total: data.total,
     });
   });
 
@@ -227,24 +239,31 @@ export const getWeeklyAttendanceTrend = async (userId: string, semesterStart: st
   return trendData;
 };
 
-export const getSubjectAttendance = async (userId: string, semesterStart: string, semesterEnd: string) => {
+export const getSubjectAttendance = async (
+  userId: string,
+  semesterStart: string,
+  semesterEnd: string
+) => {
   const records = await fetchAttendanceRecords(userId, semesterStart, semesterEnd);
 
   // Group by subject
-  const subjectData: Record<string, {
-    total: number;
-    attended: number;
-    missed: number;
-    cancelled: number;
-  }> = {};
+  const subjectData: Record<
+    string,
+    {
+      total: number;
+      attended: number;
+      missed: number;
+      cancelled: number;
+    }
+  > = {};
 
-  records.forEach(record => {
+  records.forEach((record) => {
     if (!subjectData[record.subject_id]) {
       subjectData[record.subject_id] = {
         total: 0,
         attended: 0,
         missed: 0,
-        cancelled: 0
+        cancelled: 0,
       };
     }
 
@@ -271,21 +290,28 @@ export const getSubjectAttendance = async (userId: string, semesterStart: string
       missedClasses: data.missed,
       cancelledClasses: data.cancelled,
       percentage: percentage,
-      requiredClasses: percentage < 75 ? Math.ceil((0.75 * (data.attended + data.missed)) - data.attended) : undefined
+      requiredClasses:
+        percentage < 75
+          ? Math.ceil(0.75 * (data.attended + data.missed) - data.attended)
+          : undefined,
     });
   });
 
   return subjects;
 };
 
-export const getOverallAttendanceStatus = async (userId: string, semesterStart: string, semesterEnd: string) => {
+export const getOverallAttendanceStatus = async (
+  userId: string,
+  semesterStart: string,
+  semesterEnd: string
+) => {
   const records = await fetchAttendanceRecords(userId, semesterStart, semesterEnd);
 
   let attended = 0;
   let missed = 0;
   let cancelled = 0;
 
-  records.forEach(record => {
+  records.forEach((record) => {
     if (record.status === 'present' || record.status === 'late') {
       attended++;
     } else if (record.status === 'absent') {
@@ -312,6 +338,6 @@ export const getOverallAttendanceStatus = async (userId: string, semesterStart: 
     status,
     attended,
     total,
-    requiredFor75: total > 0 ? Math.ceil(0.75 * total) : 0
+    requiredFor75: total > 0 ? Math.ceil(0.75 * total) : 0,
   };
 };

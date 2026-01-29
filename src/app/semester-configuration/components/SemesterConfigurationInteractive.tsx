@@ -27,7 +27,7 @@ interface SchedulePeriod {
   startTime: string;
   endTime: string;
   subjectId: string;
-  classroom: string;
+  classroom?: string;
   dayOfWeek?: string;
 }
 
@@ -104,12 +104,16 @@ const SemesterConfigurationInteractive = () => {
     }
 
     if (schedule && typeof schedule === 'object') {
-      // WeeklySchedule object - extract Monday's schedule or first available day
-      const days = Object.keys(schedule);
-      if (days.length > 0) {
-        const firstDay = days.includes('Monday') ? 'Monday' : days[0];
-        return schedule[firstDay] || [];
-      }
+      // WeeklySchedule object - flatten into single array
+      const allPeriods: SchedulePeriod[] = [];
+      Object.entries(schedule).forEach(([day, periods]) => {
+        if (Array.isArray(periods)) {
+          // Ensure each period has the day set
+          const periodsWithDay = periods.map((p: any) => ({ ...p, dayOfWeek: day }));
+          allPeriods.push(...periodsWithDay);
+        }
+      });
+      return allPeriods;
     }
 
     return [];
@@ -308,6 +312,7 @@ const SemesterConfigurationInteractive = () => {
             </div>
           </div>
           <button
+            type="button"
             onClick={handleSaveConfiguration}
             disabled={!isConfigurationComplete() || isSaving}
             className={`

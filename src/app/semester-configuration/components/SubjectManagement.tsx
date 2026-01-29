@@ -132,6 +132,7 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
           </div>
         </div>
         <button
+          type="button"
           onClick={() => setIsAddingSubject(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-smooth"
         >
@@ -188,12 +189,14 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
           )}
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={handleAddSubject}
               className="px-4 py-2 bg-success text-success-foreground rounded-lg hover:bg-success/90 transition-smooth"
             >
               Save Subject
             </button>
             <button
+              type="button"
               onClick={() => {
                 setIsAddingSubject(false);
                 setError('');
@@ -215,6 +218,7 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
             Add your semester subjects here to start tracking attendance and creating your schedule.
           </p>
           <button
+            type="button"
             onClick={() => setIsAddingSubject(true)}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-smooth"
           >
@@ -256,6 +260,7 @@ const SubjectManagement = ({ onSubjectsChange, initialSubjects = [] }: SubjectMa
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => handleRemoveSubject(subject.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-error hover:bg-error/10 rounded-lg transition-smooth"
                 title="Drop this subject"

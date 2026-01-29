@@ -54,8 +54,6 @@ const LoginForm = ({ className = '' }: LoginFormProps) => {
     );
   }
 
-
-
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -100,10 +98,12 @@ const LoginForm = ({ className = '' }: LoginFormProps) => {
 
     try {
       const { error } = await signIn(formData.email, formData.password);
-      
+
       if (error) {
         setErrors({
-          general: error.message || 'Invalid email or password. Please check your credentials and try again.',
+          general:
+            error.message ||
+            'Invalid email or password. Please check your credentials and try again.',
         });
       } else {
         router.push('/calendar-dashboard');

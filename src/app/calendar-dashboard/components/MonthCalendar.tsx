@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchAttendanceForMonth, getAttendanceStatusByDate } from '@/lib/attendanceService';
 import { DatabaseSetupNotification } from '@/components/ui/DatabaseSetupNotification';
 
-
 interface AttendanceStatus {
   attended: number;
   missed: number;
@@ -30,7 +29,13 @@ interface MonthCalendarProps {
   className?: string;
 }
 
-const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = '' }: MonthCalendarProps) => {
+const MonthCalendar = ({
+  year,
+  month,
+  semesterStart,
+  semesterEnd,
+  className = '',
+}: MonthCalendarProps) => {
   const router = useRouter();
   const { user } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -38,8 +43,18 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
   const [loading, setLoading] = useState(true);
 
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -55,16 +70,16 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
       setLoading(false);
       return;
     }
-    
+
     const fetchAttendanceData = async () => {
       try {
         setLoading(true);
-        
+
         // Get all dates in the month
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
-        
+
         const monthDates: string[] = [];
         for (let date = 1; date <= daysInMonth; date++) {
           const currentDate = new Date(year, month, date);
@@ -72,7 +87,7 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
           const fullDate = currentDate.toISOString().split('T')[0];
           monthDates.push(fullDate);
         }
-        
+
         // Fetch attendance data for the month
         let attendanceData: Record<string, any> = {};
 
@@ -141,7 +156,7 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
         setLoading(false);
       }
     };
-    
+
     fetchAttendanceData();
   }, [year, month, semesterStart, semesterEnd, isHydrated, user]);
 
@@ -213,7 +228,9 @@ const MonthCalendar = ({ year, month, semesterStart, semesterEnd, className = ''
             `}
             aria-label={`${monthNames[month]} ${day.date}, ${year}`}
           >
-            <span className={`text-sm font-medium ${day.isToday ? 'text-primary' : 'text-foreground'}`}>
+            <span
+              className={`text-sm font-medium ${day.isToday ? 'text-primary' : 'text-foreground'}`}
+            >
               {day.date}
             </span>
             {day.isCurrentMonth && getAttendanceIndicator(day.attendanceStatus)}

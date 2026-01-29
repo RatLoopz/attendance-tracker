@@ -177,19 +177,24 @@ const RegistrationForm = () => {
         collegeName: formData.collegeName,
         semester: formData.semester,
         degreeProgram: formData.degreeProgram,
-        graduationYear: formData.graduationYear
+        graduationYear: formData.graduationYear,
       };
-      
+
       const result = await signUp(formData.email, formData.password, profileData);
       const { error } = result;
-      
+
       if (error) {
         alert(`Registration failed: ${error.message}`);
       } else if (result.needsConfirmation) {
-        alert(result.message || 'Registration successful! Please check your email to confirm your account.');
+        alert(
+          result.message ||
+            'Registration successful! Please check your email to confirm your account.'
+        );
         router.push('/login');
       } else {
-        alert('Registration successful! Welcome to AttendanceTracker. Redirecting to semester configuration...');
+        alert(
+          'Registration successful! Welcome to AttendanceTracker. Redirecting to semester configuration...'
+        );
         router.push('/semester-configuration');
       }
     } catch (err) {

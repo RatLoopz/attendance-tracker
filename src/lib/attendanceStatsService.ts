@@ -236,7 +236,6 @@ export const getAttendanceAlertsForSubjects = async (
   }
 };
 
-
 /**
  * Calculates attendance trend data by week
  */

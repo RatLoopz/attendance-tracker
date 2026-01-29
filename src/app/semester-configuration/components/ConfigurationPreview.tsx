@@ -15,7 +15,7 @@ interface SchedulePeriod {
   startTime: string;
   endTime: string;
   subjectId: string;
-  classroom: string;
+  dayOfWeek?: string;
 }
 
 interface WeeklySchedule {
@@ -41,6 +41,17 @@ const ConfigurationPreview = ({
 }: ConfigurationPreviewProps) => {
   const [isHydrated, setIsHydrated] = useState(false);
   const [semesterDays, setSemesterDays] = useState(0);
+  const [activeDay, setActiveDay] = useState<string>('Monday');
+
+  const DAYS_OF_WEEK = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
 
   useEffect(() => {
     setIsHydrated(true);
@@ -85,6 +96,28 @@ const ConfigurationPreview = ({
   }
 
   const isComplete = startDate && endDate && academicYear && subjects.length > 0;
+
+  // Normalize schedule logic moved inside render for preview
+
+  // Robust normalization to getting all periods first, then filtering
+  const getAllPeriods = () => {
+    let periods: any[] = [];
+    if (Array.isArray(schedule)) {
+      periods = schedule;
+    } else if (schedule && typeof schedule === 'object') {
+      Object.entries(schedule).forEach(([day, dayPeriods]) => {
+        if (Array.isArray(dayPeriods)) {
+          periods.push(...dayPeriods.map((p: any) => ({ ...p, dayOfWeek: day })));
+        }
+      });
+    }
+    return periods;
+  };
+
+  const allPeriods = getAllPeriods();
+  const activeDayPeriods = allPeriods
+    .filter((p) => (p.dayOfWeek || 'Monday') === activeDay)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   return (
     <div className="bg-card rounded-lg p-6 shadow-elevation-2">
@@ -157,58 +190,99 @@ const ConfigurationPreview = ({
             </div>
           </div>
 
-          <div className="p-4 bg-background rounded-lg border border-border">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon name="ClockIcon" size={16} className="text-secondary" />
-              <span className="caption text-muted-foreground">Daily Schedule</span>
+          <div className="p-0 bg-transparent">
+            <div className="flex items-center gap-2 mb-4 px-1">
+              <Icon name="ClockIcon" size={18} className="text-primary" />
+              <span className="font-semibold text-foreground">Weekly Schedule Preview</span>
             </div>
+
+            {/* Day Tabs - Matches DailyScheduleConfig UI */}
+            <div className="flex overflow-x-auto pb-2 mb-4 gap-2 scrollbar-thin">
+              {DAYS_OF_WEEK.map((day) => (
+                <button
+                  type="button"
+                  key={day}
+                  onClick={() => setActiveDay(day)}
+                  className={`
+                      px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all
+                      ${
+                        activeDay === day
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }
+                    `}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-2">
-              {(() => {
-                // Normalize schedule to array format
-                let periods: SchedulePeriod[] = [];
-
-                if (Array.isArray(schedule)) {
-                  // Already an array
-                  periods = schedule;
-                } else if (schedule && typeof schedule === 'object') {
-                  // WeeklySchedule object - extract all periods from all days
-                  const allDays = Object.keys(schedule);
-                  if (allDays.length > 0) {
-                    // Get Monday's schedule as default, or first available day
-                    const firstDay = allDays.includes('Monday') ? 'Monday' : allDays[0];
-                    periods = schedule[firstDay] || [];
-                  }
-                }
-
-                const validPeriods = periods.filter((p: SchedulePeriod) => p.subjectId);
-
-                if (validPeriods.length === 0) {
-                  return (
-                    <p className="text-sm text-muted-foreground text-center py-2">
-                      No classes scheduled
-                    </p>
-                  );
-                }
-
-                return validPeriods.map((period: SchedulePeriod) => (
-                  <div
-                    key={period.periodNumber}
-                    className="flex items-center justify-between p-2 bg-card rounded"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="data-text text-sm text-muted-foreground w-20">
-                        {period.startTime} - {period.endTime}
-                      </span>
-                      <span className="text-sm text-foreground">
-                        {getSubjectName(period.subjectId)}
-                      </span>
-                    </div>
-                    {period.classroom && (
-                      <span className="caption text-muted-foreground">{period.classroom}</span>
-                    )}
+              {activeDayPeriods.length === 0 ? (
+                <div className="text-center py-8 bg-card border border-dashed border-border rounded-xl">
+                  <p className="text-muted-foreground">No classes scheduled for {activeDay}.</p>
+                </div>
+              ) : (
+                <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-muted/30 px-4 py-3 border-b border-border/60 flex items-center gap-2">
+                    <div className="w-1.5 h-4 bg-primary rounded-full"></div>
+                    <h4 className="font-semibold text-foreground text-sm tracking-wide">
+                      {activeDay}
+                    </h4>
                   </div>
-                ));
-              })()}
+
+                  <div className="divide-y divide-border/40">
+                    {activeDayPeriods.map((period, idx) => {
+                      const subjectName = getSubjectName(period.subjectId);
+                      const isNoClass = subjectName === 'No Class';
+
+                      return (
+                        <div
+                          key={`${period.periodNumber}-${idx}`}
+                          className="group flex items-stretch p-3 hover:bg-muted/20 transition-colors"
+                        >
+                          <div className="flex flex-col justify-center min-w-[85px] mr-4 text-right pr-4 border-r border-border/40 relative">
+                            {/* Timeline dot */}
+                            <div className="absolute -right-[5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-background border-2 border-primary z-10"></div>
+
+                            <span className="text-xs font-semibold text-foreground">
+                              {period.startTime}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {period.endTime}
+                            </span>
+                          </div>
+
+                          <div className="flex-1 flex items-center justify-between">
+                            <div
+                              className={`flex items-center gap-3 ${isNoClass ? 'opacity-50' : ''}`}
+                            >
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isNoClass ? 'bg-muted' : 'bg-primary/10 text-primary'}`}
+                              >
+                                <Icon
+                                  name={isNoClass ? 'MinusCircleIcon' : 'BookOpenIcon'}
+                                  size={16}
+                                />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground line-clamp-1">
+                                  {subjectName}
+                                </p>
+                                {!isNoClass && (
+                                  <p className="text-[10px] text-muted-foreground bg-muted/60 inline-block px-1.5 rounded mt-0.5">
+                                    {period.isLab ? 'Laboratory' : 'Theory Class'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

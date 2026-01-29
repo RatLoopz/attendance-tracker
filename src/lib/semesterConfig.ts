@@ -24,7 +24,7 @@ export interface SchedulePeriod {
   startTime: string;
   endTime: string;
   subjectId: string;
-  classroom: string;
+  classroom?: string;
   dayOfWeek?: string;
   isLab?: boolean;
 }
@@ -320,10 +320,6 @@ export const validateSchedulePeriod = (
 
   if (!period.subjectId || period.subjectId.trim() === '') {
     return { valid: false, error: 'Subject ID is required' };
-  }
-
-  if (!period.classroom || period.classroom.trim() === '') {
-    return { valid: false, error: 'Classroom is required' };
   }
 
   return { valid: true };

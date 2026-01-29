@@ -183,7 +183,7 @@ const Header = ({ className = '' }: HeaderProps) => {
                       </button>
                     );
                   }
-                  
+
                   return (
                     <Link
                       key={item.path || item.label}
