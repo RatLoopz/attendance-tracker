@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Icon from '@/components/ui/AppIcon';
 import { Subject, SchedulePeriod } from '@/lib/semesterConfig';
 
 interface DailyScheduleConfigProps {
   subjects: Subject[];
   onScheduleChange: (schedule: SchedulePeriod[]) => void;
-  initialSchedule: SchedulePeriod[];
+  schedule: SchedulePeriod[];
 }
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -15,17 +15,9 @@ const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'S
 const DailyScheduleConfig = ({
   subjects,
   onScheduleChange,
-  initialSchedule,
+  schedule = [],
 }: DailyScheduleConfigProps) => {
   const [activeDay, setActiveDay] = useState<string>('Monday');
-  const [schedule, setSchedule] = useState<SchedulePeriod[]>(initialSchedule || []);
-
-  // Update local state when prop changes
-  useEffect(() => {
-    if (initialSchedule) {
-      setSchedule(initialSchedule);
-    }
-  }, [initialSchedule]);
 
   // Filter periods for the active day
   const activeDayPeriods = schedule
@@ -45,7 +37,6 @@ const DailyScheduleConfig = ({
     };
 
     const newSchedule = [...schedule, newPeriod];
-    setSchedule(newSchedule);
     onScheduleChange(newSchedule);
   };
 
@@ -54,33 +45,23 @@ const DailyScheduleConfig = ({
     field: keyof SchedulePeriod,
     value: string | number
   ) => {
-    // Determine the actual index in the full schedule array
-    // We need to find the specific item that corresponds to the one being edited
-    // Since activeDayPeriods is sorted and filtered, we use the period object itself logic?
-    // Better: Map over the full schedule and update the matching one.
-    // But since we don't have unique IDs for periods (yet), we rely on object identity or we strictly filter-map.
-
-    // Let's rely on finding the item in the full list that matches the one we are rendering.
-    // However, since we re-create objects, reference equality might fail if not careful.
-    // Let's use the local 'activeDayPeriods' index to identify the item, and then find that item in the main list.
-
+    // Determine the actual period to update using the filtered list index
     const periodToUpdate = activeDayPeriods[index];
 
     const newSchedule = schedule.map((p) => {
+      // Use reference equality to find the exact period object
       if (p === periodToUpdate) {
         return { ...p, [field]: value };
       }
       return p;
     });
 
-    setSchedule(newSchedule);
     onScheduleChange(newSchedule);
   };
 
   const handleDeletePeriod = (index: number) => {
     const periodToDelete = activeDayPeriods[index];
     const newSchedule = schedule.filter((p) => p !== periodToDelete);
-    setSchedule(newSchedule);
     onScheduleChange(newSchedule);
   };
 
@@ -90,14 +71,13 @@ const DailyScheduleConfig = ({
     // Remove existing periods for target day
     const cleanSchedule = schedule.filter((p) => (p.dayOfWeek || 'Monday') !== targetDay);
 
-    // duplicte active day periods
+    // duplicate active day periods
     const newPeriods = activeDayPeriods.map((p) => ({
       ...p,
       dayOfWeek: targetDay,
     }));
 
     const newSchedule = [...cleanSchedule, ...newPeriods];
-    setSchedule(newSchedule);
     onScheduleChange(newSchedule);
   };
 

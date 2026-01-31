@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -119,9 +119,21 @@ const SemesterConfigurationInteractive = () => {
     return [];
   };
 
+  // Track which user's data we have loaded to prevent re-fetching on tab switch/focus
+  const loadedUserId = useRef<string | null>(null);
+
   useEffect(() => {
     const loadConfiguration = async () => {
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      // If we've already loaded data for this user, don't overwrite local state
+      // This prevents resetting the form when switching tabs (which might trigger auth updates)
+      if (loadedUserId.current === user.id) {
+        return;
+      }
 
       try {
         const { data, error } = await getSemesterConfiguration(user.id);
@@ -138,6 +150,9 @@ const SemesterConfigurationInteractive = () => {
             subjects: data.subjects,
             schedule: normalizedSchedule,
           });
+
+          // Mark this user's data as loaded
+          loadedUserId.current = user.id;
         }
       } catch (err) {
         console.error('Error loading configuration:', err);
@@ -146,11 +161,7 @@ const SemesterConfigurationInteractive = () => {
       }
     };
 
-    if (user) {
-      loadConfiguration();
-    } else {
-      setIsLoading(false);
-    }
+    loadConfiguration();
   }, [user]);
 
   const handleDateChange = useCallback((startDate: string, endDate: string) => {
@@ -270,7 +281,7 @@ const SemesterConfigurationInteractive = () => {
       <DailyScheduleConfig
         subjects={configuration.subjects}
         onScheduleChange={handleScheduleChange}
-        initialSchedule={configuration.schedule}
+        schedule={configuration.schedule}
       />
 
       <ConfigurationPreview
