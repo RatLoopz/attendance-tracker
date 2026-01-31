@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSemesterConfiguration } from '@/lib/semesterConfig';
+import { getSubjectAttendanceStats } from '@/lib/attendanceStatsService';
 import YearNavigator from './YearNavigator';
 import MonthCalendar from './MonthCalendar';
 import SemesterInfoPanel from './SemesterInfoPanel';
+import YearProgressCard from './YearProgressCard';
+import MotivationCard from './MotivationCard';
 import Icon from '@/components/ui/AppIcon';
 import Link from 'next/link';
 
@@ -19,6 +22,11 @@ const CalendarDashboardInteractive = () => {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attendanceStats, setAttendanceStats] = useState<{
+    percentage: number;
+    totalClasses: number;
+    attendedClasses: number;
+  }>({ percentage: 0, totalClasses: 0, attendedClasses: 0 });
 
   useEffect(() => {
     setIsHydrated(true);
@@ -59,6 +67,20 @@ const CalendarDashboardInteractive = () => {
         // Set current year based on semester start date
         const startYear = new Date(data.startDate).getFullYear();
         setCurrentYear(startYear);
+
+        // Fetch attendance statistics for motivation
+        const { data: stats } = await getSubjectAttendanceStats(user.id);
+        if (stats && stats.length > 0) {
+          const totalClasses = stats.reduce((sum, subject) => sum + subject.totalClasses, 0);
+          const totalAttended = stats.reduce((sum, subject) => sum + subject.attendedClasses, 0);
+          const percentage = totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0;
+
+          setAttendanceStats({
+            percentage,
+            totalClasses,
+            attendedClasses: totalAttended,
+          });
+        }
       } catch (err) {
         console.error('Unexpected error fetching semester config:', err);
         setError('An unexpected error occurred');
@@ -174,10 +196,25 @@ const CalendarDashboardInteractive = () => {
   return (
     <div className="min-h-screen bg-background pt-[60px] pb-20 md:pb-6">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Year Progress and Motivation Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <YearProgressCard
+            semesterStart={semesterConfig.startDate}
+            semesterEnd={semesterConfig.endDate}
+          />
+          <MotivationCard
+            attendancePercentage={attendanceStats.percentage}
+            totalClasses={attendanceStats.totalClasses}
+            attendedClasses={attendanceStats.attendedClasses}
+          />
+        </div>
+
+        {/* Year Navigator */}
         <div className="mb-8">
           <YearNavigator onYearChange={handleYearChange} />
         </div>
 
+        {/* Calendar Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {months.map((month) => (
