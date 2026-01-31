@@ -19,6 +19,7 @@ interface DayData {
   isCurrentMonth: boolean;
   isSemesterDay: boolean;
   isToday: boolean;
+  isWeekend: boolean;
   attendanceStatus?: AttendanceStatus;
 }
 
@@ -119,6 +120,7 @@ const MonthCalendar = ({
             isCurrentMonth: false,
             isSemesterDay: false,
             isToday: false,
+            isWeekend: false,
           });
         }
 
@@ -127,6 +129,8 @@ const MonthCalendar = ({
           const fullDate = formatLocalDate(currentDate);
           const isSemesterDay = currentDate >= semesterStartDate && currentDate <= semesterEndDate;
           const isToday = currentDate.getTime() === today.getTime();
+          const dayOfWeek = currentDate.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
           days.push({
             date,
@@ -134,6 +138,7 @@ const MonthCalendar = ({
             isCurrentMonth: true,
             isSemesterDay,
             isToday,
+            isWeekend,
             attendanceStatus: attendanceData[fullDate],
           });
         }
@@ -148,6 +153,7 @@ const MonthCalendar = ({
             isCurrentMonth: false,
             isSemesterDay: false,
             isToday: false,
+            isWeekend: false,
           });
         }
 
@@ -203,39 +209,84 @@ const MonthCalendar = ({
   }
 
   return (
-    <div className={`bg-card rounded-lg shadow-elevation-2 p-6 ${className}`}>
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-foreground">{monthNames[month]}</h3>
+    <div
+      className={`bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 ${className}`}
+    >
+      <div className="mb-6 flex items-center justify-between">
+        <h3 className="text-lg font-bold text-foreground tracking-tight">{monthNames[month]}</h3>
+        {/* Optional: Add month-specific stats or indicators here */}
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-3 mb-2">
         {weekDays.map((day) => (
-          <div key={day} className="text-center caption font-medium text-muted-foreground py-2">
+          <div
+            key={day}
+            className={`text-center text-[0.65rem] uppercase tracking-wider font-bold py-2 ${day === 'Sun' || day === 'Sat' ? 'text-error/70' : 'text-muted-foreground'}`}
+          >
             {day}
           </div>
         ))}
+      </div>
 
-        {calendarDays.map((day, index) => (
-          <button
-            key={index}
-            onClick={() => handleDateClick(day)}
-            disabled={!day.isCurrentMonth}
-            className={`
-              aspect-square rounded-lg transition-smooth flex flex-col items-center justify-center gap-1 p-2
-              ${!day.isCurrentMonth ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
-              ${day.isSemesterDay && day.isCurrentMonth ? 'bg-primary/10 hover:bg-primary/20' : 'bg-muted hover:bg-muted/80'}
-              ${day.isToday ? 'ring-2 ring-primary' : ''}
-            `}
-            aria-label={`${monthNames[month]} ${day.date}, ${year}`}
-          >
-            <span
-              className={`text-sm font-medium ${day.isToday ? 'text-primary' : 'text-foreground'}`}
+      <div className="grid grid-cols-7 gap-3">
+        {calendarDays.map((day, index) => {
+          // Base styling
+          let dayClasses =
+            'relative aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-200 group';
+
+          // State-based styling
+          if (!day.isCurrentMonth) {
+            dayClasses += ' opacity-20 cursor-not-allowed bg-muted/10';
+          } else {
+            dayClasses += ' cursor-pointer';
+
+            if (day.isWeekend) {
+              dayClasses += ' bg-[#f5e6e6] dark:bg-[#3f2e2e] border border-transparent';
+            } else if (day.isSemesterDay) {
+              dayClasses += ' bg-primary/5 hover:bg-primary/10 border border-primary/10';
+            } else {
+              dayClasses += ' bg-muted/20 hover:bg-muted/40 border border-transparent';
+            }
+
+            if (day.isToday) {
+              dayClasses += ' ring-1 ring-primary ring-offset-1 ring-offset-background z-10';
+            }
+          }
+
+          return (
+            <button
+              key={index}
+              onClick={() => handleDateClick(day)}
+              disabled={!day.isCurrentMonth}
+              className={dayClasses}
+              aria-label={`${monthNames[month]} ${day.date}, ${year} ${day.isWeekend ? '(Holiday)' : ''}`}
             >
-              {day.date}
-            </span>
-            {day.isCurrentMonth && getAttendanceIndicator(day.attendanceStatus)}
-          </button>
-        ))}
+              <span
+                className={`text-sm font-semibold ${
+                  day.isToday
+                    ? 'text-primary'
+                    : day.isWeekend && day.isCurrentMonth
+                      ? 'text-[#8a5d5d] dark:text-[#dcbdbd]'
+                      : 'text-foreground/80'
+                }`}
+              >
+                {day.date}
+              </span>
+
+              {/* Attendance Indicator */}
+              {day.isCurrentMonth && !day.isWeekend && day.isSemesterDay && (
+                <div className="h-1.5 flex items-end">
+                  {getAttendanceIndicator(day.attendanceStatus) || (
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted/30" />
+                  )}
+                </div>
+              )}
+
+              {/* Holiday Indicator - Removed for minimalism */}
+              {day.isCurrentMonth && day.isWeekend && null}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
