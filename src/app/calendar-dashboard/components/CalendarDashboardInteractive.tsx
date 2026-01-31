@@ -178,8 +178,8 @@ const CalendarDashboardInteractive = () => {
           <YearNavigator onYearChange={handleYearChange} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-          <div className="lg:col-span-2 space-y-6 h-full overflow-y-auto pr-4 custom-scrollbar scroll-smooth pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
             {months.map((month) => (
               <MonthCalendar
                 key={month}
@@ -191,8 +191,8 @@ const CalendarDashboardInteractive = () => {
             ))}
           </div>
 
-          <div className="lg:col-span-1 h-full overflow-y-auto pointer-events-none">
-            <div className="sticky top-0 pointer-events-auto">
+          <div className="lg:col-span-1">
+            <div className="sticky top-[76px]">
               <SemesterInfoPanel
                 semesterStart={semesterConfig.startDate}
                 semesterEnd={semesterConfig.endDate}

@@ -22,8 +22,8 @@ const DateNavigator = ({ selectedDate, onDateChange }: DateNavigatorProps) => {
 
   if (!isHydrated) {
     return (
-      <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-        <div className="h-12 bg-muted rounded" />
+      <div className="bg-card rounded-lg p-4 border border-border/50">
+        <div className="h-12 bg-muted/50 rounded" />
       </div>
     );
   }
@@ -71,72 +71,68 @@ const DateNavigator = ({ selectedDate, onDateChange }: DateNavigatorProps) => {
   };
 
   return (
-    <div className="bg-card rounded-lg p-4 shadow-elevation-2">
+    <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handlePreviousDay}
-            className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-smooth"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Previous day"
           >
-            <Icon name="ChevronLeftIcon" size={20} />
+            <Icon name="ChevronLeftIcon" size={18} />
           </button>
 
-          <div className="flex-1 sm:flex-initial text-center">
-            <h2 className="font-heading font-semibold text-xl text-foreground">
+          <div className="flex-1 sm:flex-initial text-center min-w-[200px]">
+            <h2 className="font-heading font-semibold text-lg text-foreground">
               {formatDisplayDate(selectedDate)}
             </h2>
             {isToday() && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full caption font-medium mt-1">
-                <Icon name="ClockIcon" size={12} />
-                Today
-              </span>
+              <span className="text-xs font-medium text-primary block mt-0.5">Today</span>
             )}
           </div>
 
           <button
             onClick={handleNextDay}
-            className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-smooth"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Next day"
           >
-            <Icon name="ChevronRightIcon" size={20} />
+            <Icon name="ChevronRightIcon" size={18} />
           </button>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
           <button
             onClick={handleToday}
             disabled={isToday()}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-lg transition-smooth
+              text-sm font-medium px-3 py-1.5 rounded-lg transition-colors
               ${
                 isToday()
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-primary text-primary-foreground hover:opacity-90'
+                  ? 'text-muted-foreground/50 cursor-not-allowed'
+                  : 'text-primary hover:bg-primary/5'
               }
             `}
           >
-            <Icon name="CalendarIcon" size={18} />
-            <span className="text-sm font-medium">Today</span>
+            Go to Today
           </button>
 
           <div className="relative">
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg transition-smooth"
+              className="flex items-center gap-2 px-3 py-1.5 border border-border rounded-lg hover:bg-muted/50 transition-colors"
               title="Select date"
             >
-              <Icon name="CalendarDaysIcon" size={18} />
+              <Icon name="CalendarDaysIcon" size={16} />
               <span className="text-sm font-medium hidden sm:inline">Pick Date</span>
             </button>
 
             {showDatePicker && (
-              <div className="absolute right-0 top-full mt-2 bg-popover rounded-lg shadow-elevation-4 p-4 z-50 animate-slide-down">
+              <div className="absolute right-0 top-full mt-2 bg-popover border border-border rounded-lg shadow-sm p-4 z-50">
                 <input
                   type="date"
                   value={selectedDate.toISOString().split('T')[0]}
                   onChange={handleDateSelect}
-                  className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-foreground text-sm"
                 />
               </div>
             )}

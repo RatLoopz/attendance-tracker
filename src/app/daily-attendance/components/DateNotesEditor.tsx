@@ -62,8 +62,8 @@ const DateNotesEditor = ({ selectedDate }: DateNotesEditorProps) => {
 
   if (!isHydrated || isLoading) {
     return (
-      <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-        <div className="h-64 bg-muted rounded" />
+      <div className="bg-card rounded-lg p-4 border border-border/50">
+        <div className="h-64 bg-muted/50 rounded" />
       </div>
     );
   }
@@ -180,7 +180,7 @@ const DateNotesEditor = ({ selectedDate }: DateNotesEditorProps) => {
   };
 
   return (
-    <div className="bg-card rounded-lg p-4 md:p-6 shadow-elevation-2">
+    <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-heading font-semibold text-lg text-foreground flex items-center gap-2">
           <Icon name="DocumentTextIcon" size={20} className="text-primary" />

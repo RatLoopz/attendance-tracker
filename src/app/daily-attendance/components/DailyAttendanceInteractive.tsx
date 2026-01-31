@@ -241,10 +241,10 @@ const DailyAttendanceContent = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-card rounded-lg p-4 md:p-6 shadow-elevation-2">
-                <h2 className="font-heading font-semibold text-xl text-foreground mb-4">
-                  Class Schedule
-                </h2>
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-lg font-semibold text-foreground">Class Schedule</h2>
+                </div>
                 <DailyScheduleTimeline
                   selectedDate={selectedDate}
                   periods={periods}
@@ -274,18 +274,18 @@ const DailyAttendanceContent = () => {
 const LoadingSkeleton = () => (
   <div className="min-h-screen bg-background pt-[76px] pb-20 md:pb-8">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-        <div className="h-12 bg-muted rounded" />
+      <div className="bg-card border border-border/50 rounded-xl p-4">
+        <div className="h-12 bg-muted/50 rounded" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-            <div className="h-96 bg-muted rounded" />
+          <div className="bg-card border border-border/50 rounded-xl p-4">
+            <div className="h-96 bg-muted/50 rounded" />
           </div>
         </div>
         <div className="lg:col-span-1">
-          <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-            <div className="h-64 bg-muted rounded" />
+          <div className="bg-card border border-border/50 rounded-xl p-4">
+            <div className="h-64 bg-muted/50 rounded" />
           </div>
         </div>
       </div>

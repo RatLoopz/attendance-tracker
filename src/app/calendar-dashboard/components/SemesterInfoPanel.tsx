@@ -118,7 +118,7 @@ const SemesterInfoPanel = ({
 
   return (
     <div
-      className={`bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm p-6 space-y-8 ${className}`}
+      className={`bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 p-6 space-y-8 ${className}`}
     >
       <div>
         <h3 className="text-xl font-bold text-foreground mb-6 tracking-tight">Current Semester</h3>
@@ -269,7 +269,7 @@ const SemesterInfoPanel = ({
       <div className="border-t border-border/50 pt-6">
         <Link
           href="/semester-configuration"
-          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5"
         >
           <Icon name="Cog6ToothIcon" size={20} />
           <span className="text-sm font-semibold">Configure Semester</span>

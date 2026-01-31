@@ -26,11 +26,11 @@ const DailyStatisticsSummary = ({
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-          <div className="h-32 bg-muted rounded" />
+        <div className="bg-card rounded-lg p-4 border border-border/50">
+          <div className="h-32 bg-muted/50 rounded" />
         </div>
-        <div className="bg-card rounded-lg p-4 shadow-elevation-2 animate-pulse">
-          <div className="h-64 bg-muted rounded" />
+        <div className="bg-card rounded-lg p-4 border border-border/50">
+          <div className="h-64 bg-muted/50 rounded" />
         </div>
       </div>
     );
@@ -40,79 +40,75 @@ const DailyStatisticsSummary = ({
     switch (status) {
       case 'safe':
         return {
-          color: 'text-success',
-          bgColor: 'bg-success/10',
-          icon: 'CheckCircleIcon',
-          label: 'Safe Zone',
+          textColor: 'text-green-600 dark:text-green-400',
+          bgColor: 'bg-green-50 dark:bg-green-900/10',
+          label: 'Safe',
         };
       case 'warning':
         return {
-          color: 'text-warning',
-          bgColor: 'bg-warning/10',
-          icon: 'ExclamationTriangleIcon',
+          textColor: 'text-amber-600 dark:text-amber-400',
+          bgColor: 'bg-amber-50 dark:bg-amber-900/10',
           label: 'Caution',
         };
       case 'danger':
         return {
-          color: 'text-error',
-          bgColor: 'bg-error/10',
-          icon: 'XCircleIcon',
-          label: 'Danger Zone',
+          textColor: 'text-red-600 dark:text-red-400',
+          bgColor: 'bg-red-50 dark:bg-red-900/10',
+          label: 'Danger',
         };
       default:
         return {
-          color: 'text-muted-foreground',
+          textColor: 'text-muted-foreground',
           bgColor: 'bg-muted',
-          icon: 'InformationCircleIcon',
           label: 'Unknown',
         };
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-lg p-4 md:p-6 shadow-elevation-2">
-        <h3 className="font-heading font-semibold text-lg text-foreground mb-4 flex items-center gap-2">
-          <Icon name="ChartBarIcon" size={20} className="text-primary" />
-          Today's Summary
-        </h3>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-success/10 rounded-lg p-3 text-center">
-            <div className="data-text text-2xl font-bold text-success mb-1">
-              {dailyTotals.attended}
-            </div>
-            <div className="caption text-muted-foreground">Attended</div>
-          </div>
-
-          <div className="bg-error/10 rounded-lg p-3 text-center">
-            <div className="data-text text-2xl font-bold text-error mb-1">{dailyTotals.missed}</div>
-            <div className="caption text-muted-foreground">Missed</div>
-          </div>
-
-          <div className="bg-warning/10 rounded-lg p-3 text-center">
-            <div className="data-text text-2xl font-bold text-warning mb-1">
-              {dailyTotals.cancelled}
-            </div>
-            <div className="caption text-muted-foreground">Cancelled</div>
-          </div>
-
-          <div className="bg-primary/10 rounded-lg p-3 text-center">
-            <div className="data-text text-2xl font-bold text-primary mb-1">
-              {dailyTotals.total}
-            </div>
-            <div className="caption text-muted-foreground">Total</div>
-          </div>
+    <div className="space-y-6">
+      {/* Daily Numbers */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl p-4 border border-border/50 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold text-green-600 dark:text-green-400">
+            {dailyTotals.attended}
+          </span>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">
+            Attended
+          </span>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border/50 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold text-[#8a5d5d] dark:text-[#dcbdbd]">
+            {dailyTotals.missed}
+          </span>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">
+            Missed
+          </span>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border/50 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold text-amber-500">{dailyTotals.cancelled}</span>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">
+            Cancelled
+          </span>
+        </div>
+        <div className="bg-card rounded-xl p-4 border border-border/50 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold text-primary">{dailyTotals.total}</span>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">
+            Total
+          </span>
         </div>
       </div>
 
-      <div className="bg-card rounded-lg p-4 md:p-6 shadow-elevation-2">
-        <h3 className="font-heading font-semibold text-lg text-foreground mb-4 flex items-center gap-2">
-          <Icon name="AcademicCapIcon" size={20} className="text-primary" />
-          Subject-wise Statistics
-        </h3>
+      {/* Subject List */}
+      <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-border/50 bg-muted/20">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <Icon name="ChartBarIcon" size={18} className="text-primary" />
+            Subject Performance
+          </h3>
+        </div>
 
-        <div className="space-y-3">
+        <div className="divide-y divide-border/50 max-h-[500px] overflow-y-auto custom-scrollbar">
           {subjectStats.map((subject) => {
             const statusConfig = getStatusConfig(subject.status);
 
@@ -121,84 +117,51 @@ const DailyStatisticsSummary = ({
             if (subject.attendancePercentage < 75) {
               const currentTotal = subject.totalClasses;
               const currentAttended = subject.attendedClasses;
-              // Formula: (attended + x) / (total + x) >= 0.75
-              // x = (0.75 * total - attended) / 0.25
               requiredClasses = Math.ceil((0.75 * currentTotal - currentAttended) / 0.25);
               requiredClasses = Math.max(0, requiredClasses);
             }
 
             return (
-              <div
-                key={subject.subjectCode}
-                className="bg-muted/50 rounded-lg p-4 transition-smooth hover:bg-muted"
-              >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-foreground truncate">{subject.subjectName}</h4>
-                    <span className="caption text-muted-foreground">{subject.subjectCode}</span>
-                  </div>
-
-                  <div
-                    className={`
-                    flex items-center gap-1 px-2 py-1 rounded-lg
-                    ${statusConfig.bgColor} ${statusConfig.color}
-                    flex-shrink-0
-                  `}
-                  >
-                    <Icon name={statusConfig.icon as any} size={14} variant="solid" />
-                    <span className="caption font-medium">
-                      {subject.attendancePercentage.toFixed(1)}%
+              <div key={subject.subjectCode} className="p-4 hover:bg-muted/20 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-bold text-sm text-foreground">{subject.subjectName}</h4>
+                    <span className="text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                      {subject.subjectCode}
                     </span>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 caption text-muted-foreground">
-                  <div className="text-center">
-                    <div className="font-medium text-foreground">{subject.totalClasses}</div>
-                    <div className="text-xs">Total</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-medium text-success">{subject.attendedClasses}</div>
-                    <div className="text-xs">Attended</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-medium text-error">{subject.missedClasses}</div>
-                    <div className="text-xs">Missed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-medium text-warning">{subject.cancelledClasses}</div>
-                    <div className="text-xs">Cancelled</div>
+                  <div className="text-right">
+                    <div className={`text-lg font-bold ${statusConfig.textColor}`}>
+                      {subject.attendancePercentage.toFixed(1)}%
+                    </div>
                   </div>
                 </div>
 
-                {subject.status === 'danger' && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <div className="flex items-start gap-2 text-error caption">
-                      <Icon
-                        name="ExclamationCircleIcon"
-                        size={16}
-                        className="flex-shrink-0 mt-0.5"
-                      />
-                      <span>
-                        Attend next <strong>{requiredClasses} classes</strong> consecutively to
-                        reach 75% attendance
-                      </span>
-                    </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex gap-3">
+                    <span>
+                      <strong>{subject.attendedClasses}</strong> Present
+                    </span>
+                    <span>
+                      <strong>{subject.missedClasses}</strong> Absent
+                    </span>
                   </div>
-                )}
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wide ${statusConfig.bgColor} ${statusConfig.textColor}`}
+                  >
+                    {statusConfig.label}
+                  </span>
+                </div>
 
-                {subject.status === 'warning' && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <div className="flex items-start gap-2 text-warning caption">
-                      <Icon
-                        name="ExclamationTriangleIcon"
-                        size={16}
-                        className="flex-shrink-0 mt-0.5"
-                      />
-                      <span>
-                        Attend next <strong>{requiredClasses} classes</strong> to reach safe zone
-                      </span>
-                    </div>
+                {(subject.status === 'danger' || subject.status === 'warning') && (
+                  <div
+                    className={`mt-3 text-xs flex items-start gap-1.5 ${statusConfig.textColor} bg-card/50 p-2 rounded border border-border/50`}
+                  >
+                    <Icon name="ExclamationCircleIcon" size={14} className="mt-0.5 flex-shrink-0" />
+                    <span>
+                      Attend next <strong>{requiredClasses} classes</strong> to reach{' '}
+                      {subject.status === 'danger' ? '75%' : 'Safe Zone'}.
+                    </span>
                   </div>
                 )}
               </div>

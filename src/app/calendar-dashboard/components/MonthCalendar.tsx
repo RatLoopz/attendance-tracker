@@ -210,7 +210,7 @@ const MonthCalendar = ({
 
   return (
     <div
-      className={`bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 ${className}`}
+      className={`bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 p-6 ${className}`}
     >
       <div className="mb-6 flex items-center justify-between">
         <h3 className="text-lg font-bold text-foreground tracking-tight">{monthNames[month]}</h3>
