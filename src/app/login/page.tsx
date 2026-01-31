@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import LoginForm from './components/LoginForm';
 import LoginFeatures from './components/LoginFeatures';
-import LoginTestimonials from './components/LoginTestimonials';
 import Icon from '@/components/ui/AppIcon';
 
 export const metadata: Metadata = {
@@ -40,10 +39,6 @@ export default function LoginPage() {
             <div className="order-1 lg:order-2">
               <LoginForm />
             </div>
-          </div>
-
-          <div className="mb-16">
-            <LoginTestimonials />
           </div>
 
           <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl p-8 lg:p-12 text-center">

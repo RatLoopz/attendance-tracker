@@ -84,7 +84,9 @@ export const getOverallAttendancePercentage = async (
 
     // Count attended classes (status = 'present')
     const attendedCount = attendanceRecords.filter((record) => record.status === 'present').length;
-    const totalCount = attendanceRecords.length;
+    // Exclude cancelled (late) classes from the total count for percentage calculation
+    const validRecords = attendanceRecords.filter((record) => record.status !== 'late');
+    const totalCount = validRecords.length;
 
     const percentage = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
 
@@ -151,7 +153,10 @@ export const getSubjectAttendanceStats = async (
       const cancelledCount = subjectRecords.filter((r) => r.status === 'late').length; // 'late' is mapped to cancelled
 
       const totalCount = subjectRecords.length;
-      const percentage = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
+      // For percentage calculation, exclude cancelled classes
+      const validClassCount = attendedCount + missedCount;
+      const percentage =
+        validClassCount > 0 ? Math.round((attendedCount / validClassCount) * 100) : 0;
 
       // Determine status based on percentage
       let status: 'safe' | 'warning' | 'danger';

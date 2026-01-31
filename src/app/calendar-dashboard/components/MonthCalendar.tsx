@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAttendanceForMonth, getAttendanceStatusByDate } from '@/lib/attendanceService';
 import { DatabaseSetupNotification } from '@/components/ui/DatabaseSetupNotification';
+import { formatLocalDate } from '@/lib/dateUtils';
 
 interface AttendanceStatus {
   attended: number;
@@ -80,11 +81,12 @@ const MonthCalendar = ({
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
 
+        const startingDayOfWeek = firstDay.getDay();
+
         const monthDates: string[] = [];
         for (let date = 1; date <= daysInMonth; date++) {
           const currentDate = new Date(year, month, date);
-          currentDate.setHours(0, 0, 0, 0);
-          const fullDate = currentDate.toISOString().split('T')[0];
+          const fullDate = formatLocalDate(currentDate);
           monthDates.push(fullDate);
         }
 
@@ -99,9 +101,6 @@ const MonthCalendar = ({
           attendanceData = {};
         }
 
-        const startingDayOfWeek = firstDay.getDay();
-        // daysInMonth is already declared above
-
         const semesterStartDate = new Date(semesterStart);
         const semesterEndDate = new Date(semesterEnd);
         const today = new Date();
@@ -112,7 +111,8 @@ const MonthCalendar = ({
         for (let i = 0; i < startingDayOfWeek; i++) {
           const prevMonthLastDay = new Date(year, month, 0).getDate();
           let date = prevMonthLastDay - startingDayOfWeek + i + 1;
-          const fullDate = new Date(year, month - 1, date).toISOString().split('T')[0];
+          const prevDateObj = new Date(year, month - 1, date);
+          const fullDate = formatLocalDate(prevDateObj);
           days.push({
             date,
             fullDate,
@@ -124,8 +124,7 @@ const MonthCalendar = ({
 
         for (let date = 1; date <= daysInMonth; date++) {
           const currentDate = new Date(year, month, date);
-          currentDate.setHours(0, 0, 0, 0);
-          const fullDate = currentDate.toISOString().split('T')[0];
+          const fullDate = formatLocalDate(currentDate);
           const isSemesterDay = currentDate >= semesterStartDate && currentDate <= semesterEndDate;
           const isToday = currentDate.getTime() === today.getTime();
 
@@ -141,7 +140,8 @@ const MonthCalendar = ({
 
         const remainingDays = 42 - days.length;
         for (let date = 1; date <= remainingDays; date++) {
-          const fullDate = new Date(year, month + 1, date).toISOString().split('T')[0];
+          const nextDateObj = new Date(year, month + 1, date);
+          const fullDate = formatLocalDate(nextDateObj);
           days.push({
             date,
             fullDate,

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getSemesterConfiguration } from './semesterConfig';
 
 export interface AttendanceRecordInput {
   userId: string;
@@ -50,6 +51,29 @@ export const recordAttendance = async (
     }
 
     console.log('Recording attendance:', record);
+
+    // Validate against semester configuration
+    const { data: semesterConfig } = await getSemesterConfiguration(record.userId);
+
+    if (semesterConfig) {
+      const recordDate = new Date(record.date);
+      const startDate = new Date(semesterConfig.startDate);
+      const endDate = new Date(semesterConfig.endDate);
+
+      // Reset times to compare dates only
+      recordDate.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (recordDate < startDate || recordDate > endDate) {
+        return {
+          data: null,
+          error: {
+            message: `Cannot record attendance outside semester dates (${semesterConfig.startDate} to ${semesterConfig.endDate})`,
+          },
+        };
+      }
+    }
 
     // Use upsert to handle both insert and update
     // The unique constraint is on (user_id, subject_id, date)
@@ -168,6 +192,47 @@ export const deleteAttendanceRecord = async (recordId: string): Promise<{ error:
 };
 
 /**
+ * Deletes an attendance record by User ID, Subject ID, and Date
+ */
+export const deleteAttendanceForSubject = async (
+  userId: string,
+  subjectId: string,
+  date: string
+): Promise<{ error: any }> => {
+  try {
+    if (!userId || !subjectId || !date) {
+      return { error: { message: 'User ID, Subject ID, and Date are required' } };
+    }
+
+    console.log(`Deleting attendance for user ${userId}, subject ${subjectId} on ${date}`);
+
+    const { error } = await supabase
+      .from('attendance_records')
+      .delete()
+      .eq('user_id', userId)
+      .eq('subject_id', subjectId)
+      .eq('date', date);
+
+    if (error) {
+      console.error('Error deleting attendance record by subject:', error);
+      return { error };
+    }
+
+    console.log('Attendance record deleted successfully');
+    return { error: null };
+  } catch (error) {
+    console.error('Unexpected error in deleteAttendanceForSubject:', error);
+    return {
+      error: {
+        message:
+          'Failed to delete attendance record: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      },
+    };
+  }
+};
+
+/**
  * Bulk records multiple attendance records at once
  * Useful for marking attendance for multiple periods in a day
  */
@@ -195,6 +260,32 @@ export const bulkRecordAttendance = async (
     }
 
     console.log(`Bulk recording ${records.length} attendance records`);
+
+    // Validate against semester configuration
+    if (records.length > 0) {
+      const { data: semesterConfig } = await getSemesterConfiguration(records[0].userId);
+
+      if (semesterConfig) {
+        const startDate = new Date(semesterConfig.startDate);
+        const endDate = new Date(semesterConfig.endDate);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(0, 0, 0, 0);
+
+        for (const record of records) {
+          const recordDate = new Date(record.date);
+          recordDate.setHours(0, 0, 0, 0);
+
+          if (recordDate < startDate || recordDate > endDate) {
+            return {
+              data: null,
+              error: {
+                message: `Cannot record attendance outside semester dates (${semesterConfig.startDate} to ${semesterConfig.endDate})`,
+              },
+            };
+          }
+        }
+      }
+    }
 
     // Convert to database format
     const dbRecords = records.map((record) => ({

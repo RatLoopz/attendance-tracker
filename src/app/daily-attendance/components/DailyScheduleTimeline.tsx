@@ -20,7 +20,10 @@ export interface ClassPeriod {
 interface DailyScheduleTimelineProps {
   selectedDate: Date;
   periods: ClassPeriod[];
-  onStatusChange: (periodId: string, status: 'attended' | 'missed' | 'cancelled') => void;
+  onStatusChange: (
+    periodId: string,
+    status: 'attended' | 'missed' | 'cancelled' | 'pending'
+  ) => void;
   loading?: boolean;
   error?: string | null;
 }
@@ -78,7 +81,10 @@ const DailyScheduleTimeline = ({
     );
   }
 
-  const handleStatusClick = (periodId: string, status: 'attended' | 'missed' | 'cancelled') => {
+  const handleStatusClick = (
+    periodId: string,
+    status: 'attended' | 'missed' | 'cancelled' | 'pending'
+  ) => {
     onStatusChange(periodId, status);
   };
 
@@ -241,19 +247,34 @@ const DailyScheduleTimeline = ({
                     <button
                       onClick={() => handleStatusClick(period.id, 'cancelled')}
                       className={`
-                        flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg
-                        transition-smooth text-sm font-medium
-                        ${
-                          period.status === 'cancelled'
-                            ? 'bg-warning text-warning-foreground'
-                            : 'bg-warning/10 text-warning hover:bg-warning/20'
-                        }
-                      `}
+                          flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg
+                          transition-smooth text-sm font-medium
+                          ${
+                            period.status === 'cancelled'
+                              ? 'bg-warning text-warning-foreground'
+                              : 'bg-warning/10 text-warning hover:bg-warning/20'
+                          }
+                        `}
                       title="Mark as cancelled"
                     >
                       <Icon name="MinusIcon" size={16} />
                       <span className="hidden sm:inline">Cancel</span>
                     </button>
+
+                    {period.status !== 'pending' && (
+                      <button
+                        onClick={() => handleStatusClick(period.id, 'pending')}
+                        className="
+                            flex items-center justify-center px-3 py-2 rounded-lg
+                            bg-muted text-muted-foreground hover:bg-muted/80
+                            transition-smooth text-sm font-medium
+                          "
+                        title="Reset status"
+                      >
+                        <Icon name="ArrowPathIcon" size={16} />
+                        <span className="hidden sm:inline ml-1">Reset</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

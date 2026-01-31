@@ -19,7 +19,8 @@ import {
   getDayOfWeek,
   isWeekend,
 } from '@/lib/scheduleGenerator';
-import { recordAttendance } from '@/lib/attendanceRecordingService';
+import { recordAttendance, deleteAttendanceForSubject } from '@/lib/attendanceRecordingService';
+import { formatLocalDate, parseLocalDate } from '@/lib/dateUtils';
 
 const DailyAttendanceContent = () => {
   const searchParams = useSearchParams();
@@ -30,12 +31,13 @@ const DailyAttendanceContent = () => {
   const [periods, setPeriods] = useState<ClassPeriod[]>([]);
   const [subjectStats, setSubjectStats] = useState<SubjectStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Update date from search params
   useEffect(() => {
     const dateParam = searchParams.get('date');
     if (dateParam) {
-      setSelectedDate(new Date(dateParam));
+      setSelectedDate(parseLocalDate(dateParam));
     }
   }, [searchParams]);
 
@@ -46,7 +48,10 @@ const DailyAttendanceContent = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const dateStr = selectedDate.toISOString().split('T')[0];
+        // Use local date format for DB query
+        const dateStr = formatLocalDate(selectedDate);
+
+        // ... (rest of logic)
 
         // 1. Fetch Semester Config & Schedule
         const { data: semesterConfig, error: configError } = await getSemesterConfiguration(
@@ -58,56 +63,76 @@ const DailyAttendanceContent = () => {
         if (!semesterConfig) {
           setPeriods([]); // No config
         } else {
-          // Generate schedule
-          if (isWeekend(selectedDate)) {
+          // Validate date matches semester duration
+          const startDate = new Date(semesterConfig.startDate);
+          const endDate = new Date(semesterConfig.endDate);
+          endDate.setHours(23, 59, 59, 999); // Include the entire end date
+
+          // Reset times for strict date comparison
+          const checkDate = new Date(selectedDate);
+          checkDate.setHours(0, 0, 0, 0);
+          const checkStart = new Date(startDate);
+          checkStart.setHours(0, 0, 0, 0);
+          const checkEnd = new Date(endDate);
+          checkEnd.setHours(23, 59, 59, 999);
+
+          if (checkDate < checkStart || checkDate > checkEnd) {
             setPeriods([]);
+            setError(
+              `Selected date is outside the semester (${semesterConfig.startDate} to ${semesterConfig.endDate})`
+            );
           } else {
-            const dayOfWeek = getDayOfWeek(selectedDate);
-            const dailySchedule = generateDailySchedule(
-              selectedDate,
-              semesterConfig.schedule,
-              semesterConfig.subjects
-            );
+            setError(null);
+            if (isWeekend(selectedDate)) {
+              setPeriods([]);
+            } else {
+              const dayOfWeek = getDayOfWeek(selectedDate);
+              const dailySchedule = generateDailySchedule(
+                selectedDate,
+                semesterConfig.schedule,
+                semesterConfig.subjects
+              );
 
-            // Fetch daily attendance records
-            const { data: attendanceData } = await supabase
-              .from('attendance_records')
-              .select('subject_id, status')
-              .eq('user_id', user.id)
-              .eq('date', dateStr);
+              // Fetch daily attendance records
+              const { data: attendanceData } = await supabase
+                .from('attendance_records')
+                .select('subject_id, status')
+                .eq('user_id', user.id)
+                .eq('date', dateStr);
 
-            const attendanceMap = new Map();
-            attendanceData?.forEach((record) => {
-              const uiStatus =
-                record.status === 'present'
-                  ? 'attended'
-                  : record.status === 'absent'
-                    ? 'missed'
-                    : record.status === 'late'
-                      ? 'cancelled'
-                      : 'pending';
-              attendanceMap.set(record.subject_id, uiStatus);
-            });
+              const attendanceMap = new Map();
+              attendanceData?.forEach((record) => {
+                const uiStatus =
+                  record.status === 'present'
+                    ? 'attended'
+                    : record.status === 'absent'
+                      ? 'missed'
+                      : record.status === 'late'
+                        ? 'cancelled'
+                        : 'pending';
+                attendanceMap.set(record.subject_id, uiStatus);
+              });
 
-            // Associate subject details
-            const enriched = enrichScheduleWithSubjectDetails(
-              dailySchedule,
-              semesterConfig.subjects
-            );
+              // Associate subject details
+              const enriched = enrichScheduleWithSubjectDetails(
+                dailySchedule,
+                semesterConfig.subjects
+              );
 
-            // Combine
-            const combinedPeriods: ClassPeriod[] = enriched.map((p) => ({
-              id: p.subjectId,
-              periodNumber: p.periodNumber,
-              startTime: p.startTime,
-              endTime: p.endTime,
-              subjectName: p.subjectName,
-              subjectCode: p.subjectCode,
-              classroom: p.classroom,
-              status: (attendanceMap.get(p.subjectId) || 'pending') as ClassPeriod['status'],
-            }));
+              // Combine
+              const combinedPeriods: ClassPeriod[] = enriched.map((p) => ({
+                id: p.subjectId,
+                periodNumber: p.periodNumber,
+                startTime: p.startTime,
+                endTime: p.endTime,
+                subjectName: p.subjectName,
+                subjectCode: p.subjectCode,
+                classroom: p.classroom,
+                status: (attendanceMap.get(p.subjectId) || 'pending') as ClassPeriod['status'],
+              }));
 
-            setPeriods(combinedPeriods);
+              setPeriods(combinedPeriods);
+            }
           }
         }
 
@@ -128,27 +153,61 @@ const DailyAttendanceContent = () => {
   // Handle status update
   const handleStatusChange = async (
     periodId: string,
-    status: 'attended' | 'missed' | 'cancelled'
+    status: 'attended' | 'missed' | 'cancelled' | 'pending'
   ) => {
     if (!user) return;
 
     // Optimistic update
     setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status } : p)));
 
-    const dbStatus = status === 'attended' ? 'present' : status === 'missed' ? 'absent' : 'late';
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(selectedDate);
 
-    const { error } = await recordAttendance({
-      userId: user.id,
-      subjectId: periodId,
-      date: dateStr,
-      status: dbStatus,
-    });
+    let error = null;
+
+    if (status === 'pending') {
+      // Delete record if resetting to pending
+      const { error: deleteError } = await deleteAttendanceForSubject(user.id, periodId, dateStr);
+      error = deleteError;
+    } else {
+      // Insert/Update record
+      const dbStatus = status === 'attended' ? 'present' : status === 'missed' ? 'absent' : 'late';
+
+      const { error: recordError } = await recordAttendance({
+        userId: user.id,
+        subjectId: periodId,
+        date: dateStr,
+        status: dbStatus,
+      });
+      error = recordError;
+    }
 
     if (error) {
       console.error('Failed to update attendance:', error);
-      // Revert on error
-      setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, status: 'pending' } : p)));
+      // Revert on error - fetch fresh data to be safe, or revert to previous known state
+      // For now, simpler to just fetch fresh
+      const { data: freshAttendance } = await supabase
+        .from('attendance_records')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('subject_id', periodId)
+        .eq('date', dateStr)
+        .single();
+
+      let revertedStatus: ClassPeriod['status'] = 'pending';
+      if (freshAttendance) {
+        revertedStatus =
+          freshAttendance.status === 'present'
+            ? 'attended'
+            : freshAttendance.status === 'absent'
+              ? 'missed'
+              : freshAttendance.status === 'late'
+                ? 'cancelled'
+                : 'pending';
+      }
+
+      setPeriods((prev) =>
+        prev.map((p) => (p.id === periodId ? { ...p, status: revertedStatus } : p))
+      );
       return;
     }
 
@@ -191,6 +250,7 @@ const DailyAttendanceContent = () => {
                   periods={periods}
                   onStatusChange={handleStatusChange}
                   loading={loading}
+                  error={error}
                 />
               </div>
 

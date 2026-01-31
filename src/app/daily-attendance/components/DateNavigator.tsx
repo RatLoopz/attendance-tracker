@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
+import { formatLocalDate, parseLocalDate } from '@/lib/dateUtils';
 
 interface DateNavigatorProps {
   selectedDate: Date;
@@ -40,24 +41,25 @@ const DateNavigator = ({ selectedDate, onDateChange }: DateNavigatorProps) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() - 1);
     onDateChange(newDate);
-    router.push(`/daily-attendance?date=${newDate.toISOString().split('T')[0]}`);
+    router.push(`/daily-attendance?date=${formatLocalDate(newDate)}`);
   };
 
   const handleNextDay = () => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + 1);
     onDateChange(newDate);
-    router.push(`/daily-attendance?date=${newDate.toISOString().split('T')[0]}`);
+    router.push(`/daily-attendance?date=${formatLocalDate(newDate)}`);
   };
 
   const handleToday = () => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize to midnight
     onDateChange(today);
-    router.push(`/daily-attendance?date=${today.toISOString().split('T')[0]}`);
+    router.push(`/daily-attendance?date=${formatLocalDate(today)}`);
   };
 
   const handleDateSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = new Date(e.target.value);
+    const newDate = parseLocalDate(e.target.value);
     onDateChange(newDate);
     router.push(`/daily-attendance?date=${e.target.value}`);
     setShowDatePicker(false);
